@@ -1,0 +1,270 @@
+/* General Styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #e0f7fa; /* Light Teal Background */
+  color: #333;
+}
+
+#root {
+  padding: 20px;
+}
+
+.App {
+  max-width: 960px; /* Increased max-width for larger screens */
+  margin: 20px auto;
+  background-color: #fff;
+  padding: 30px; /* Increased padding */
+  border-radius: 12px; /* More rounded corners */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Stronger shadow */
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 25px;
+  border-bottom: 2px solid #b2ebf2; /* More prominent border */
+  margin-bottom: 30px;
+}
+
+header h1 {
+  margin: 0;
+  color: #00bcd4; /* Teal Header Text */
+}
+
+.auth-info {
+  display: flex;
+  align-items: center;
+}
+
+.auth-info span {
+  margin-right: 15px;
+  font-weight: bold;
+}
+
+/* Navigation Styles */
+nav ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 25px; /* Increased gap */
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #00796b; /* Darker Teal Navigation Text */
+  font-weight: 600;
+  padding: 10px 15px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+nav ul li a:hover {
+  background-color: #e0f7fa; /* Light Teal Hover Background */
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hierarchy-group {
+  flex-direction: row; /* Align label and select/input horizontally */
+  align-items: center;
+}
+
+.hierarchy-group label {
+  width: 160px;
+  text-align: right;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #26a69a; /* Teal Label Text */
+}
+
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  font-size: 1em;
+}
+
+.form-actions {
+  margin-top: 20px;
+}
+
+button[type="submit"],
+button[type="button"] {
+  padding: 12px 20px;
+  background-color: #00bcd4; /* Teal Button Background */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover,
+button[type="button"]:hover {
+  background-color: #0097a7; /* Darker Teal Hover Background */
+}
+
+.add-hierarchy-button {
+  background: none;
+  border: none;
+  color: #00bcd4;
+  font-size: 1.4em;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: color 0.3s ease;
+}
+
+.inline-input {
+  display: flex;
+  margin-left: 10px;
+  margin-bottom: 10px; /* Added margin for spacing */
+}
+
+.inline-input input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-right: 10px;
+}
+
+
+/* Lists and Summaries */
+.customer-list, .product-list, .budget-summary ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.customer-item, .product-item, .budget-summary li {
+  padding: 15px;
+  border: 1px solid #ddd;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  background-color: #f0f0f0; /* Light Gray List Item Background */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow for list items */
+}
+
+.customer-item, .product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.customer-actions button, .product-actions button {
+  margin-left: 10px;
+  background-color: #ff5722; /* Deep Orange Delete Button */
+  color: white;
+}
+
+.customer-actions button:hover, .product-actions button:hover {
+  background-color: #e64a19; /* Darker Orange Hover */
+}
+
+.budget-summary {
+  margin-top: 30px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fffde7; /* Light Yellow Budget Summary Background */
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+}
+
+.budget-summary h3, .customer-list h3, .product-list h3, h2 {
+  color: #009688; /* Teal Section Titles */
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px dashed #b2dfdb;
+  padding-bottom: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #root {
+    padding: 10px;
+  }
+
+  .App {
+    margin: 10px auto;
+    padding: 20px;
+    border-radius: 8px;
+  }
+
+  header {
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+  }
+
+  nav ul {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  nav ul li a {
+    padding: 10px 20px;
+  }
+
+  .hierarchy-group {
+    flex-direction: column; /* Stack labels and inputs on smaller screens */
+    align-items: stretch; /* Full width alignment */
+  }
+
+  .hierarchy-group label {
+    text-align: left; /* Left align labels on mobile */
+    width: auto;      /* Auto width for labels on mobile */
+    margin-bottom: 5px; /* Add margin below label */
+  }
+
+  .inline-input {
+    flex-direction: column; /* Stack input and button vertically on mobile */
+    margin-left: 0; /* Reset left margin */
+  }
+
+  .inline-input input {
+    margin-bottom: 10px; /* Add margin below input on mobile */
+    margin-right: 0;      /* Reset right margin */
+  }
+
+  .customer-item, .product-item {
+    flex-direction: column; /* Stack customer/product details and actions */
+    text-align: left;      /* Left align text in list items on mobile */
+    align-items: flex-start;
+  }
+
+  .customer-actions, .product-actions {
+    margin-top: 10px;    /* Add margin above actions on mobile */
+    display: flex;        /* Arrange buttons horizontally */
+    justify-content: flex-end; /* Right-align buttons */
+    width: 100%;
+  }
+
+  .customer-actions button, .product-actions button {
+    margin-left: 5px;   /* Reduce margin between buttons on mobile */
+    margin-right: 0;     /* Reset right margin */
+  }
+}
