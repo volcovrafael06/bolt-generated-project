@@ -1,24 +1,28 @@
-import React, { useState } from 'react'
-import jsPDF from 'jspdf'
+import React, { useState } from 'react';
+import jsPDF from 'jspdf';
 
 const productModels = {
   Cortina: ['Double Vision', 'Double Vision Large', 'Double Vision Mônaco BK', 'Double Vision Screen', 'Double Vision Semi BK', 'Romana', 'Wave', 'Painel'],
   Persiana: ['Horizontal', 'Vertical'],
-}
+};
 
 function Budgets({ customers, products }) {
-  const [budgetItems, setBudgetItems] = useState([])
-  const [selectedCustomer, setSelectedCustomer] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
-  const [budgetSummary, setBudgetSummary] = useState(null)
+  const [budgetItems, setBudgetItems] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [taxes, setTaxes] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [selectedTax, setSelectedTax] = useState('');
+  const [selectedDiscount, setSelectedDiscount] = useState('');
+  const [budgetSummary, setBudgetSummary] = useState(null);
 
   const handleAddItem = () => {
-    setBudgetItems([...budgetItems, { category: '', model: '', productId: '', quantity: 1, length: '', height: '', cor: '' }])
-  }
+    setBudgetItems([...budgetItems, { category: '', model: '', productId: '', quantity: 1, length: '', height: '', cor: '' }]);
+  };
 
   const handleItemChange = (index, field, value) => {
-    const updatedItems = [...budgetItems]
-    updatedItems[index][field] = value
+    const updatedItems = [...budgetItems];
+    updatedItems[index][field] = value;
 
     if (field === 'category') {
       updatedItems[index].model = '';
@@ -30,28 +34,46 @@ function Budgets({ customers, products }) {
     if (field === 'quantity') {
       updatedItems[index][field] = Math.max(1, parseInt(value, 10));
     }
-    setBudgetItems(updatedItems)
-  }
+    setBudgetItems(updatedItems);
+  };
+
+  const handleAddTax = () => {
+    let newTax = prompt('Digite a nova taxa:');
+    if (newTax) {
+      newTax = newTax.trim();
+      setTaxes([...taxes, { label: newTax, value: newTax }]);
+      setSelectedTax(newTax);
+    }
+  };
+
+  const handleAddDiscount = () => {
+    let newDiscount = prompt('Digite o novo desconto:');
+    if (newDiscount) {
+      newDiscount = newDiscount.trim();
+      setDiscounts([...discounts, { label: newDiscount, value: newDiscount }]);
+      setSelectedDiscount(newDiscount);
+    }
+  };
 
   const calculateBudget = () => {
-    let subtotal = 0
+    let subtotal = 0;
     const itemsDetails = budgetItems.map(item => {
-      // Find product based on category and model
-      const product = products.find(p => p.category === item.category && p.model === item.model);
+      // Find product based on productId
+      const product = products.find(p => p.id === item.productId);
 
       if (product) {
         let area = 0;
         let itemTotal = 0;
         if (product.model === 'Wave') {
-          itemTotal = product.price * parseFloat(item.length) * parseFloat(item.quantity);
+          itemTotal = product.salePrice * parseFloat(item.length) * parseFloat(item.quantity);
           area = parseFloat(item.length);
         } else {
           area = parseFloat(item.length) * parseFloat(item.height) * parseFloat(item.quantity);
-          itemTotal = area * product.price;
+          itemTotal = area * product.salePrice;
         }
         subtotal += itemTotal;
         return {
-          productName: `${product.category} ${product.model} - ${product.name} - Cor: ${item.cor}`, // Include full product name
+          productName: `${product.product} ${product.model} - ${product.name} - Cor: ${item.cor}`, // Include full product name
           quantity: item.quantity,
           length: item.length,
           height: item.height,
@@ -63,12 +85,14 @@ function Budgets({ customers, products }) {
       return null;
     }).filter(item => item !== null);
 
-    let discount = 0
+    let discount = 0;
     if (paymentMethod === 'avista') {
-      discount = subtotal * 0.10
+      discount = subtotal * 0.10;
+    } else if (selectedDiscount) {
+      discount = parseFloat(selectedDiscount);
     }
 
-    const total = subtotal - discount
+    const total = subtotal - discount;
 
     setBudgetSummary({
       items: itemsDetails,
@@ -76,34 +100,37 @@ function Budgets({ customers, products }) {
       discount: discount.toFixed(2),
       total: total.toFixed(2),
       paymentMethod: paymentMethod,
-    })
-  }
+      selectedTax: selectedTax,
+      selectedDiscount: selectedDiscount,
+    });
+  };
 
   const generatePDF = () => {
-    if (!budgetSummary) return
+    if (!budgetSummary) return;
 
-    const doc = new jsPDF()
-    doc.setFontSize(20)
-    doc.text('Resumo do Orçamento PersiFIX', 10, 10)
-    doc.setFontSize(12)
-    let y = 30
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Resumo do Orçamento PersiFIX', 10, 10);
+    doc.setFontSize(12);
+    let y = 30;
 
     budgetSummary.items.forEach(item => {
-      doc.text(`Produto: ${item.productName}`, 10, y)
-      y += 10
-      doc.text(`  Quantidade: ${item.quantity}, Comprimento: ${item.length}m, Altura: ${item.height}m, Área: ${item.area}m²`, 10, y)
-      y += 10
-      doc.text(`  Total Item: R$ ${item.itemTotal}`, 10, y)
-      y += 10
-    })
+      doc.text(`Produto: ${item.productName}`, 10, y);
+      y += 10;
+      doc.text(`  Quantidade: ${item.quantity}, Comprimento: ${item.length}m, Altura: ${item.height}m, Área: ${item.area}m²`, 10, y);
+      y += 10;
+      doc.text(`  Total Item: R$ ${item.itemTotal}`, 10, y);
+      y += 10;
+    });
 
-    doc.text(`Subtotal: R$ {budgetSummary.subtotal}`, 10, y + 10)
-    doc.text(`Desconto (${budgetSummary.paymentMethod === 'avista' ? '10% à vista' : 'Nenhum'}): R$ {budgetSummary.discount}`, 10, y + 20)
-    doc.text(`Total: R$ {budgetSummary.total}`, 10, y + 30)
-    doc.text(`Forma de Pagamento: {budgetSummary.paymentMethod === 'avista' ? 'À Vista' : 'Parcelado'}`, 10, y + 40)
+    doc.text(`Subtotal: R$ ${budgetSummary.subtotal}`, 10, y + 10);
+    doc.text(`Desconto (${budgetSummary.paymentMethod === 'avista' ? '10% à vista' : budgetSummary.selectedDiscount ? `Desconto: R$ ${budgetSummary.selectedDiscount}` : 'Nenhum'}): R$ ${budgetSummary.discount}`, 10, y + 20);
+    doc.text(`Taxa: ${budgetSummary.selectedTax ? `R$ ${budgetSummary.selectedTax}` : 'Nenhum'}`, 10, y + 30);
+    doc.text(`Total: R$ ${budgetSummary.total}`, 10, y + 40);
+    doc.text(`Forma de Pagamento: ${budgetSummary.paymentMethod === 'avista' ? 'À Vista' : 'Parcelado'}`, 10, y + 50);
 
-    doc.save('orcamento_persifix.pdf')
-  }
+    doc.save('orcamento_persifix.pdf');
+  };
 
   return (
     <div>
@@ -184,6 +211,28 @@ function Budgets({ customers, products }) {
         </select>
       </div>
 
+      <div className="form-group">
+        <label htmlFor="tax">Taxa:</label>
+        <select id="tax" name="tax" value={selectedTax} onChange={(e) => setSelectedTax(e.target.value)}>
+          <option value="">Selecione uma taxa</option>
+          {taxes.map(tax => (
+            <option key={tax.value} value={tax.value}>{tax.label}</option>
+          ))}
+        </select>
+        <button type="button" onClick={handleAddTax}>Adicionar Taxa</button>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="discount">Desconto:</label>
+        <select id="discount" name="discount" value={selectedDiscount} onChange={(e) => setSelectedDiscount(e.target.value)}>
+          <option value="">Selecione um desconto</option>
+          {discounts.map(discount => (
+            <option key={discount.value} value={discount.value}>{discount.label}</option>
+          ))}
+        </select>
+        <button type="button" onClick={handleAddDiscount}>Adicionar Desconto</button>
+      </div>
+
       <button type="button" onClick={calculateBudget}>Calcular Orçamento</button>
       <button type="button" onClick={generatePDF} disabled={!budgetSummary}>Gerar PDF</button>
 
@@ -193,18 +242,19 @@ function Budgets({ customers, products }) {
           <ul>
             {budgetSummary.items.map((item, index) => (
               <li key={index}>
-                {item.productName} - Quantidade: {item.quantity}, Comprimento: {item.length}m, Altura: {item.height}m, Área: {item.area}m², Total Item: R$ {item.itemTotal} , Cor: {item.cor}
+                {item.productName} - Quantidade: {item.quantity}, Comprimento {item.length}m, Altura: {item.height}m, Área: {item.area}m², Total Item: R$ {item.itemTotal} , Cor: {item.cor}
               </li>
             ))}
           </ul>
           <p>Subtotal: R$ {budgetSummary.subtotal}</p>
-          <p>Desconto ({budgetSummary.paymentMethod === 'avista' ? '10% à vista' : 'Nenhum'}): R$ {budgetSummary.discount}</p>
+          <p>Desconto ({budgetSummary.paymentMethod === 'avista' ? '10% à vista' : budgetSummary.selectedDiscount ? `Desconto: R$ ${budgetSummary.selectedDiscount}` : 'Nenhum'}): R$ {budgetSummary.discount}</p>
+          <p>Taxa: {budgetSummary.selectedTax ? `R$ ${budgetSummary.selectedTax}` : 'Nenhum'}</p>
           <p>Total: R$ {budgetSummary.total}</p>
           <p>Forma de Pagamento: {budgetSummary.paymentMethod === 'avista' ? 'À Vista' : 'Parcelado'}</p>
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default Budgets
+export default Budgets;
