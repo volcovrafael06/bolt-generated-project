@@ -20,16 +20,17 @@ function Customers({ customers, setCustomers }) {
       return
     }
 
+    let updatedCustomers
     if (editingCustomerId) {
-      const updatedCustomers = customers.map(customer =>
+      updatedCustomers = customers.map(customer =>
         customer.id === editingCustomerId ? { ...customer, ...newCustomer, id: editingCustomerId } : customer
       )
-      setCustomers(updatedCustomers)
       setEditingCustomerId(null)
     } else {
       const nextId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1
-      setCustomers([...customers, { ...newCustomer, id: nextId }])
+      updatedCustomers = [...customers, { ...newCustomer, id: nextId }]
     }
+     setCustomers(updatedCustomers); // Update customers in App component
     setNewCustomer({ name: '', phone: '', email: '', address: '' }) // Clear form
   }
 
@@ -47,8 +48,8 @@ function Customers({ customers, setCustomers }) {
   }
 
   const handleDeleteCustomer = (id) => {
-    const updatedCustomers = customers.filter(customer => customer.id !== id)
-    setCustomers(updatedCustomers)
+    // const updatedCustomers = customers.filter(customer => customer.id !== id) // Don't update here
+    setCustomers(customers.filter(customer => customer.id !== id)); // Update in App
   }
 
   const handleCancelEdit = () => {

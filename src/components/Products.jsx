@@ -5,29 +5,29 @@ function Products({ products, setProducts }) {
   const [modelOptions, setModelOptions] = useState([]);
   const [materialOptions, setMaterialOptions] = useState([]);
   const [codeOptions, setCodeOptions] = useState([]);
-  const [nameOptions, setNameOptions] = useState([]); // Adicionado campo Nome
+  const [nameOptions, setNameOptions] = useState([]);
 
   const [newProduct, setNewProduct] = useState({
     product: '',
     model: '',
     material: '',
-    name: '', // Adicionado campo Nome
+    name: '',
     code: '',
-    costPrice: 0, // Initialize as numbers
-    salePrice: 0, // Initialize as numbers
+    costPrice: 0,
+    salePrice: 0,
+    profitMargin: 0, // Added profitMargin field
     calculationMethod: 'm2',
-    length: 0,    // Initialize as number
+    length: 0,
   });
 
   const [editingProductId, setEditingProductId] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // Check if the input is for a number field
-    if (['costPrice', 'salePrice', 'length'].includes(name)) {
+    if (['costPrice', 'salePrice', 'length', 'profitMargin'].includes(name)) { // Include profitMargin
       setNewProduct(prevState => ({
         ...prevState,
-        [name]: parseFloat(value) || 0 // Parse as float, default to 0 if NaN
+        [name]: parseFloat(value) || 0
       }));
     } else {
       setNewProduct(prevState => ({
@@ -58,7 +58,7 @@ function Products({ products, setProducts }) {
           setCodeOptions([...codeOptions, { label: newOption, value: newOption }]);
           setNewProduct({ ...newProduct, code: newOption });
           break;
-        case 'name': // Adicionado caso para Nome
+        case 'name':
           setNameOptions([...nameOptions, { label: newOption, value: newOption }]);
           setNewProduct({ ...newProduct, name: newOption });
           break;
@@ -70,22 +70,29 @@ function Products({ products, setProducts }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Calculate salePrice based on costPrice and profitMargin
+    const calculatedSalePrice = newProduct.costPrice + (newProduct.costPrice * (newProduct.profitMargin / 100));
+
+    let updatedProducts;
     if (editingProductId !== null) {
-      setProducts(products.map(product => 
-        product.id === editingProductId ? { ...product, ...newProduct } : product
-      ));
+      updatedProducts = products.map(product =>
+        product.id === editingProductId ? { ...product, ...newProduct, salePrice: calculatedSalePrice } : product // Update salePrice here
+      );
       setEditingProductId(null);
     } else {
-      setProducts([...products, { ...newProduct, id: Date.now() }]);
+      updatedProducts = [...products, { ...newProduct, id: Date.now(), salePrice: calculatedSalePrice }]; // Update salePrice here
     }
+    setProducts(updatedProducts);
     setNewProduct({
       product: '',
       model: '',
       material: '',
-      name: '', // Reset campo Nome
+      name: '',
       code: '',
       costPrice: 0,
       salePrice: 0,
+      profitMargin: 0, // Reset profitMargin
       calculationMethod: 'm2',
       length: 0,
     });
@@ -107,10 +114,11 @@ function Products({ products, setProducts }) {
       product: '',
       model: '',
       material: '',
-      name: '', // Reset campo Nome
+      name: '',
       code: '',
       costPrice: 0,
       salePrice: 0,
+      profitMargin: 0, // Reset profitMargin
       calculationMethod: 'm2',
       length: 0,
     });
@@ -150,7 +158,7 @@ function Products({ products, setProducts }) {
           <button type="button" onClick={() => handleAddOption('material')}>Adicionar Tecido</button>
         </div>
         <div className="form-group">
-          <label>Nome:</label> {/* Adicionado campo Nome */}
+          <label>Nome:</label>
           <select value={newProduct.name} name="name" onChange={handleInputChange}>
             <option value="">Selecione um Nome</option>
             {nameOptions.map(option => (
@@ -174,8 +182,12 @@ function Products({ products, setProducts }) {
           <input type="number" name="costPrice" value={newProduct.costPrice} onChange={handleInputChange} />
         </div>
         <div className="form-group">
+          <label>Margem de Lucro (%):</label> {/* Added Margem de Lucro field */}
+          <input type="number" name="profitMargin" value={newProduct.profitMargin} onChange={handleInputChange} />
+        </div>
+        <div className="form-group">
           <label>Preço de Venda:</label>
-          <input type="number" name="salePrice" value={newProduct.salePrice} onChange={handleInputChange} />
+          <input type="number" name="salePrice" value={newProduct.salePrice} readOnly /> {/* Sale price is now read-only and calculated */}
         </div>
         <div className="form-group">
           <label>Forma de Cálculo:</label>
@@ -198,7 +210,7 @@ function Products({ products, setProducts }) {
       <ul className="product-list">
         {products.map(product => (
           <li key={product.id} className="product-item">
-            {product.product} - {product.model} - {product.material} - {product.name} - {product.code} - {product.costPrice} - {product.salePrice} - {product.calculationMethod} - {product.length}
+            {product.product} - {product.model} - {product.material} - {product.name} - {product.code} - Custo: {product.costPrice} - Margem: {product.profitMargin}% - Venda: {product.salePrice} - {product.calculationMethod} - {product.length}
             <div className="product-actions">
               <button type="button" onClick={() => handleEditProduct(product.id)}>Editar</button>
               <button type="button" onClick={() => handleDeleteProduct(product.id)}>Excluir</button>

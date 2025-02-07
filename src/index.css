@@ -1,10 +1,10 @@
-/* General Styles */
+/* PLAY CONSOLE Style */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #e0f7fa; /* Light Teal Background */
-  color: #333;
+  background-color: #121212; /* Dark background, like a console */
+  color: #e0e0e0; /* Light gray text for contrast */
 }
 
 #root {
@@ -12,12 +12,12 @@ body {
 }
 
 .App {
-  max-width: 960px; /* Increased max-width for larger screens */
+  max-width: 960px;
   margin: 20px auto;
-  background-color: #fff;
-  padding: 30px; /* Increased padding */
-  border-radius: 12px; /* More rounded corners */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Stronger shadow */
+  background-color: #212121; /* Slightly lighter dark background for the main app area */
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Deeper shadow for depth */
 }
 
 header {
@@ -25,13 +25,14 @@ header {
   justify-content: space-between;
   align-items: center;
   padding-bottom: 25px;
-  border-bottom: 2px solid #b2ebf2; /* More prominent border */
+  border-bottom: 2px solid #333; /* Darker border */
   margin-bottom: 30px;
 }
 
 header h1 {
   margin: 0;
-  color: #00bcd4; /* Teal Header Text */
+  color: #00bcd4; /* Teal - a vibrant console-like color */
+  text-shadow: 0 0 5px #00bcd4; /* Neon glow effect */
 }
 
 .auth-info {
@@ -42,30 +43,32 @@ header h1 {
 .auth-info span {
   margin-right: 15px;
   font-weight: bold;
+  color: #bdbdbd; /* Slightly lighter text for auth info */
 }
 
-/* Navigation Styles */
+/* Navigation Styles - Console Style */
 nav ul {
   list-style: none;
   padding: 0;
   display: flex;
-  gap: 25px; /* Increased gap */
+  gap: 25px;
 }
 
 nav ul li a {
   text-decoration: none;
-  color: #00796b; /* Darker Teal Navigation Text */
+  color: #bbdefb; /* Light Blue - another console-like color */
   font-weight: 600;
   padding: 10px 15px;
   border-radius: 8px;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transitions */
 }
 
 nav ul li a:hover {
-  background-color: #e0f7fa; /* Light Teal Hover Background */
+  background-color: #bbdefb; /* Light Blue background on hover */
+  color: #212121; /* Dark text on hover for contrast */
 }
 
-/* Form Styles */
+/* Form Styles - Console Style */
 .form-group {
   margin-bottom: 20px;
   display: flex;
@@ -73,7 +76,7 @@ nav ul li a:hover {
 }
 
 .hierarchy-group {
-  flex-direction: row; /* Align label and select/input horizontally */
+  flex-direction: row;
   align-items: center;
 }
 
@@ -82,13 +85,14 @@ nav ul li a:hover {
   text-align: right;
   margin-right: 15px;
   flex-shrink: 0;
+  color: #9e9e9e; /* Gray label text */
 }
 
 .form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #26a69a; /* Teal Label Text */
+  color: #00bcd4; /* Teal labels to stand out */
 }
 
 .form-group input[type="text"],
@@ -99,7 +103,9 @@ nav ul li a:hover {
 .form-group select {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ccc;
+  background-color: #333; /* Dark input background */
+  color: #e0e0e0; /* Light text in inputs */
+  border: 1px solid #555; /* Darker border for inputs */
   border-radius: 8px;
   box-sizing: border-box;
   margin-bottom: 10px;
@@ -113,18 +119,19 @@ nav ul li a:hover {
 button[type="submit"],
 button[type="button"] {
   padding: 12px 20px;
-  background-color: #00bcd4; /* Teal Button Background */
-  color: white;
+  background-color: #00bcd4; /* Teal buttons */
+  color: #212121; /* Dark text on buttons */
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1em;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 button[type="submit"]:hover,
 button[type="button"]:hover {
-  background-color: #0097a7; /* Darker Teal Hover Background */
+  background-color: #0097a7; /* Darker Teal on hover */
+  color: #e0e0e0; /* Light text on hover */
 }
 
 .add-hierarchy-button {
@@ -137,21 +144,27 @@ button[type="button"]:hover {
   transition: color 0.3s ease;
 }
 
+.add-hierarchy-button:hover {
+  color: #0097a7;
+}
+
+
 .inline-input {
   display: flex;
   margin-left: 10px;
-  margin-bottom: 10px; /* Added margin for spacing */
+  margin-bottom: 10px;
 }
 
 .inline-input input {
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #555;
   border-radius: 8px;
   margin-right: 10px;
+  background-color: #333;
+  color: #e0e0e0;
 }
 
-
-/* Lists and Summaries */
+/* Lists and Summaries - Console Style */
 .customer-list, .product-list, .budget-summary ul {
   list-style: none;
   padding: 0;
@@ -160,11 +173,11 @@ button[type="button"]:hover {
 
 .customer-item, .product-item, .budget-summary li {
   padding: 15px;
-  border: 1px solid #ddd;
+  border: 1px solid #444; /* Darker border for list items */
   margin-bottom: 15px;
   border-radius: 8px;
-  background-color: #f0f0f0; /* Light Gray List Item Background */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow for list items */
+  background-color: #333; /* Dark list item background */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* More pronounced shadow */
 }
 
 .customer-item, .product-item {
@@ -175,32 +188,33 @@ button[type="button"]:hover {
 
 .customer-actions button, .product-actions button {
   margin-left: 10px;
-  background-color: #ff5722; /* Deep Orange Delete Button */
-  color: white;
+  background-color: #ff7043; /* Orange-Red delete button - console vibe */
+  color: #212121;
 }
 
 .customer-actions button:hover, .product-actions button:hover {
-  background-color: #e64a19; /* Darker Orange Hover */
+  background-color: #f4511e; /* Darker Orange-Red on hover */
+  color: #e0e0e0;
 }
 
 .budget-summary {
   margin-top: 30px;
   padding: 20px;
-  border: 1px solid #ddd;
+  border: 1px solid #444;
   border-radius: 8px;
-  background-color: #fffde7; /* Light Yellow Budget Summary Background */
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+  background-color: #424242; /* Even darker for budget summary */
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 
 .budget-summary h3, .customer-list h3, .product-list h3, h2 {
-  color: #009688; /* Teal Section Titles */
+  color: #00bcd4; /* Teal section titles */
   margin-top: 0;
   margin-bottom: 15px;
-  border-bottom: 1px dashed #b2dfdb;
+  border-bottom: 1px dashed #555; /* Darker dashed border */
   padding-bottom: 5px;
 }
 
-/* Responsive Design */
+/* Responsive Design - Console Style Adjustments */
 @media (max-width: 768px) {
   #root {
     padding: 10px;
@@ -230,41 +244,72 @@ button[type="button"]:hover {
   }
 
   .hierarchy-group {
-    flex-direction: column; /* Stack labels and inputs on smaller screens */
-    align-items: stretch; /* Full width alignment */
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .hierarchy-group label {
-    text-align: left; /* Left align labels on mobile */
-    width: auto;      /* Auto width for labels on mobile */
-    margin-bottom: 5px; /* Add margin below label */
+    text-align: left;
+    width: auto;
+    margin-bottom: 5px;
   }
 
   .inline-input {
-    flex-direction: column; /* Stack input and button vertically on mobile */
-    margin-left: 0; /* Reset left margin */
+    flex-direction: column;
+    margin-left: 0;
   }
 
   .inline-input input {
-    margin-bottom: 10px; /* Add margin below input on mobile */
-    margin-right: 0;      /* Reset right margin */
+    margin-bottom: 10px;
+    margin-right: 0;
   }
 
   .customer-item, .product-item {
-    flex-direction: column; /* Stack customer/product details and actions */
-    text-align: left;      /* Left align text in list items on mobile */
+    flex-direction: column;
+    text-align: left;
     align-items: flex-start;
   }
 
   .customer-actions, .product-actions {
-    margin-top: 10px;    /* Add margin above actions on mobile */
-    display: flex;        /* Arrange buttons horizontally */
-    justify-content: flex-end; /* Right-align buttons */
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
     width: 100%;
   }
 
   .customer-actions button, .product-actions button {
-    margin-left: 5px;   /* Reduce margin between buttons on mobile */
-    margin-right: 0;     /* Reset right margin */
+    margin-left: 5px;
+    margin-right: 0;
+  }
+
+  /* Payment Methods Responsive Styles */
+  .form-group {
+    flex-direction: column;
+  }
+
+  .form-group input[type="text"] {
+    width: 100%;
+  }
+
+  .form-group button {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  ul {
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #555; /* Darker border for list items in responsive view */
+  }
+
+  li button {
+    margin-left: 10px;
   }
 }

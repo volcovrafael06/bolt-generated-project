@@ -1,60 +1,48 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState } from 'react';
 
 function Login({ onLogin }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const navigate = useNavigate()
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    // Basic authentication logic (replace with real auth later)
-    let role = null;
+  const handleLogin = () => {
     if (username === 'admin' && password === 'admin') {
-      role = 'admin';
+      onLogin('admin');
     } else if (username === 'vendedor' && password === 'vendedor') {
-      role = 'vendedor';
+      onLogin('vendedor');
+    } else {
+      alert('Credenciais inválidas');
     }
+  };
 
-    if (role) {
-      onLogin({ role: role, username: username });
-      navigate(`/${role}`); // Redirect based on role
-    }
-     else {
-      alert('Credenciais inválidas')
-    }
-  }
+  const handleLogout = () => {
+    onLogin(null); // This should probably clear the user, not set to null
+  };
 
   return (
     <div>
       <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="username">Usuário:</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="password">Senha:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Entrar</button>
-      </form>
+      <div className="form-group">
+        <label>Usuário</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Usuário"
+        />
+      </div>
+      <div className="form-group">
+        <label>Senha</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Senha"
+        />
+      </div>
+      <button onClick={handleLogin}>Entrar</button>
+      <button onClick={handleLogout}>Sair</button>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;

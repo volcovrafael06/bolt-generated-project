@@ -1,0 +1,6 @@
+/* Basic styles for App.css - we can move these later if needed */
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: sans-serif;
+}
