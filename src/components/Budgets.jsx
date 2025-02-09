@@ -15,14 +15,18 @@ function Budgets({ customers, products, setCustomers }) {
     email: '',
     address: '',
   });
+  const [budgetItems, setBudgetItems] = useState([]); // New state for budget items
 
   const handleClientSelect = (event) => {
     if (event.target.value === 'new-customer') {
       setShowNewCustomerForm(true);
       setSelectedClient(null);
-    } else {
+    } else if (event.target.value) { // Ensure value is not empty string
       setShowNewCustomerForm(false);
-      setSelectedClient(customers.find(client => client.id === event.target.value));
+      setSelectedClient(customers.find(client => client.id === parseInt(event.target.value, 10))); // Parse value to integer
+    } else {
+      setSelectedClient(null); // Handle case where no client is selected (empty value)
+      setShowNewCustomerForm(false);
     }
   };
 
@@ -39,13 +43,33 @@ function Budgets({ customers, products, setCustomers }) {
     setHeight(parseFloat(event.target.value));
   };
 
+  const handleAddItemToBudget = () => {
+    if (selectedProduct) {
+      const newItem = {
+        product: selectedProduct,
+        length: length,
+        height: height,
+      };
+      setBudgetItems([...budgetItems, newItem]);
+      setSelectedProduct(null); // Clear selected product after adding
+      setLength(0);
+      setHeight(0);
+    } else {
+      alert('Selecione um produto para adicionar ao orçamento.');
+    }
+  };
+
+
   const generatePDF = () => {
     const doc = new jsPDF();
     const tableData = [
-      [ 'Cliente', 'Produto', 'Comprimento', 'Altura' ],
-      [ selectedClient?.name || '', selectedProduct?.name || '', length, height ],
+      [ 'Produto', 'Comprimento', 'Altura' ], // Table header
+      ...budgetItems.map(item => [ // Map budget items to table rows
+        item.product.name, item.length, item.height
+      ])
     ];
-    doc.autoTable({ html: '#my-table' });
+    doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10); // Client name in PDF
+    doc.autoTable({ head: [tableData[0]], body: tableData.slice(1) }); // Use tableData for autoTable
     doc.save('budget.pdf');
   };
 
@@ -127,18 +151,36 @@ function Budgets({ customers, products, setCustomers }) {
             <p>Modelo: {selectedProduct.model}</p>
             <p>Material: {selectedProduct.material}</p>
             <p>Código: {selectedProduct.code}</p>
-            <p>Preço de Venda: {selectedProduct.salePrice}</p>
+            <p>Preço: {selectedProduct.salePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
             <label>Comprimento:</label>
             <input type="number" value={length} onChange={handleLengthChange} />
-            {selectedProduct.model !== 'WAVE' && (
+            {selectedProduct.model.toLowerCase() !== 'wave' && (
               <>
                 <label>Altura:</label>
                 <input type="number" value={height} onChange={handleHeightChange} />
               </>
             )}
+             <button type="button" onClick={handleAddItemToBudget}>Adicionar Produto</button> {/* Add Product button */}
           </div>
         )}
       </div>
+
+      {/* Display Budget Items */}
+      <div className="budget-items-section">
+        <h3>Itens do Orçamento</h3>
+        {budgetItems.length > 0 ? (
+          <ul>
+            {budgetItems.map((item, index) => (
+              <li key={index}>
+                {item.product.name} - {item.product.model} - Comprimento: {item.length} - Altura: {item.height}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Nenhum item adicionado ao orçamento.</p>
+        )}
+      </div>
+
       <button onClick={generatePDF}>Gerar PDF</button>
     </div>
   );

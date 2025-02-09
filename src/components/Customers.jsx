@@ -10,7 +10,11 @@ function Customers({ customers, setCustomers }) {
   const [editingCustomerId, setEditingCustomerId] = useState(null)
 
   const handleInputChange = (e) => {
-    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    setNewCustomer(prevState => ({
+      ...prevState,
+      [name]: ['name', 'address', 'email'].includes(name) ? value.toUpperCase() : value // Convert name, address, email to uppercase
+    }))
   }
 
   const handleSubmit = (e) => {

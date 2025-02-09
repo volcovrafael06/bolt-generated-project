@@ -24,6 +24,7 @@ function Products({ products, setProducts }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    const uppercaseFields = ['product', 'model', 'material', 'name', 'code'];
     if (['costPrice', 'salePrice', 'length', 'profitMargin'].includes(name)) { // Include profitMargin
       setNewProduct(prevState => ({
         ...prevState,
@@ -32,7 +33,7 @@ function Products({ products, setProducts }) {
     } else {
       setNewProduct(prevState => ({
         ...prevState,
-        [name]: value
+        [name]: uppercaseFields.includes(name) ? value.toUpperCase() : value
       }));
     }
   };
@@ -40,7 +41,7 @@ function Products({ products, setProducts }) {
   const handleAddOption = (optionType) => {
     let newOption = prompt(`Digite novo ${optionType}:`);
     if (newOption) {
-      newOption = newOption.trim();
+      newOption = newOption.trim().toUpperCase(); // Convert new option to uppercase
       switch (optionType) {
         case 'product':
           setProductOptions([...productOptions, { label: newOption, value: newOption }]);
