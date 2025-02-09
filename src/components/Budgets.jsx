@@ -45,10 +45,21 @@ function Budgets({ customers, products, setCustomers }) {
 
   const handleAddItemToBudget = () => {
     if (selectedProduct) {
+      let calculatedPrice = selectedProduct.salePrice; // Default price is salePrice
+      if (selectedProduct.calculationMethod === 'm2') {
+        calculatedPrice = length * height * selectedProduct.salePrice; // Calculate price for m2
+      }
+
+      // Ensure calculatedPrice is a valid number
+      if (typeof calculatedPrice !== 'number') {
+        calculatedPrice = 0; // Default to 0 if calculation fails or is not a number
+      }
+
       const newItem = {
         product: selectedProduct,
         length: length,
         height: height,
+        price: calculatedPrice, // Store calculated price
       };
       setBudgetItems([...budgetItems, newItem]);
       setSelectedProduct(null); // Clear selected product after adding
@@ -63,9 +74,9 @@ function Budgets({ customers, products, setCustomers }) {
   const generatePDF = () => {
     const doc = new jsPDF();
     const tableData = [
-      [ 'Produto', 'Comprimento', 'Altura' ], // Table header
+      ['Produto', 'Comprimento', 'Altura', 'Preço'], // Table header with 'Preço'
       ...budgetItems.map(item => [ // Map budget items to table rows
-        item.product.name, item.length, item.height
+        item.product.name, item.length, item.height, item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A' // Price in table with check
       ])
     ];
     doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10); // Client name in PDF
@@ -172,7 +183,7 @@ function Budgets({ customers, products, setCustomers }) {
           <ul>
             {budgetItems.map((item, index) => (
               <li key={index}>
-                {item.product.name} - {item.product.model} - Comprimento: {item.length} - Altura: {item.height}
+                {item.product.name} - {item.product.model} - Comprimento: {item.length} - Altura: {item.height} - Preço: {item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}
               </li>
             ))}
           </ul>
