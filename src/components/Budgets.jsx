@@ -3,10 +3,10 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './Budgets.css'; // Import CSS file for styling
 
-function Budgets({ customers, products, accessories, setCustomers }) {
+function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) { // Recebendo budgets como prop
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedAccessory, setSelectedAccessory] = useState(null); // New state for selected accessory
+  const [selectedAccessory, setSelectedAccessory] = useState(null);
   const [length, setLength] = useState(0);
   const [height, setHeight] = useState(0);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
@@ -16,17 +16,17 @@ function Budgets({ customers, products, accessories, setCustomers }) {
     email: '',
     address: '',
   });
-  const [budgetItems, setBudgetItems] = useState([]); // New state for budget items
+  const [budgetItems, setBudgetItems] = useState([]);
 
   const handleClientSelect = (event) => {
     if (event.target.value === 'new-customer') {
       setShowNewCustomerForm(true);
       setSelectedClient(null);
-    } else if (event.target.value) { // Ensure value is not empty string
+    } else if (event.target.value) {
       setShowNewCustomerForm(false);
-      setSelectedClient(customers.find(client => client.id === parseInt(event.target.value, 10))); // Parse value to integer
+      setSelectedClient(customers.find(client => client.id === parseInt(event.target.value, 10)));
     } else {
-      setSelectedClient(null); // Handle case where no client is selected (empty value)
+      setSelectedClient(null);
       setShowNewCustomerForm(false);
     }
   };
@@ -36,7 +36,7 @@ function Budgets({ customers, products, accessories, setCustomers }) {
     setSelectedProduct(products.find(product => product.id === selectedProductId));
   };
 
-  const handleAccessorySelect = (event) => { // New handler for accessory selection
+  const handleAccessorySelect = (event) => {
     const selectedAccessoryId = parseInt(event.target.value, 10);
     setSelectedAccessory(accessories.find(accessory => accessory.id === selectedAccessoryId));
   };
@@ -53,37 +53,36 @@ function Budgets({ customers, products, accessories, setCustomers }) {
     let newItem = null;
 
     if (selectedProduct) {
-      let calculatedPrice = selectedProduct.salePrice; // Default price is salePrice
+      let calculatedPrice = selectedProduct.salePrice;
       if (selectedProduct.calculationMethod === 'm2') {
-        calculatedPrice = length * height * selectedProduct.salePrice; // Calculate price for m2
+        calculatedPrice = length * height * selectedProduct.salePrice;
       }
 
-      // Ensure calculatedPrice is a valid number
       if (typeof calculatedPrice !== 'number') {
-        calculatedPrice = 0; // Default to 0 if calculation fails or is not a number
+        calculatedPrice = 0;
       }
 
       newItem = {
-        type: 'product', // Indicate item type
+        type: 'product',
         item: selectedProduct,
         length: length,
         height: height,
-        price: calculatedPrice, // Store calculated price
+        price: calculatedPrice,
       };
-      setSelectedProduct(null); // Clear selected product after adding
+      setSelectedProduct(null);
       setLength(0);
       setHeight(0);
 
     } else if (selectedAccessory) {
       newItem = {
-        type: 'accessory', // Indicate item type
+        type: 'accessory',
         item: selectedAccessory,
         price: selectedAccessory.price,
       };
-      setSelectedAccessory(null); // Clear selected accessory after adding
+      setSelectedAccessory(null);
     } else {
       alert('Selecione um produto ou acessório para adicionar ao orçamento.');
-      return; // Exit if no product or accessory selected
+      return;
     }
 
     if (newItem) {
@@ -95,27 +94,46 @@ function Budgets({ customers, products, accessories, setCustomers }) {
   const generatePDF = () => {
     const doc = new jsPDF();
     const tableData = [
-      ['Item', 'Detalhes', 'Preço'], // Updated table header
+      ['Item', 'Detalhes', 'Preço'],
       ...budgetItems.map(budgetItem => {
         if (budgetItem.type === 'product') {
           return [
             budgetItem.item.name,
-            `Modelo: ${budgetItem.item.model}, Comprimento: ${budgetItem.length}, Altura: ${budgetItem.height}`, // Product details
+            `Modelo: ${budgetItem.item.model}, Comprimento: ${budgetItem.length}, Altura: ${budgetItem.height}`,
             budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
           ];
         } else if (budgetItem.type === 'accessory') {
           return [
             budgetItem.item.name,
-            'Acessório', // Accessory description
+            'Acessório',
             budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
           ];
         }
-        return []; // Default return for safety
+        return [];
       })
     ];
-    doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10); // Client name in PDF
-    doc.autoTable({ head: [tableData[0]], body: tableData.slice(1) }); // Use tableData for autoTable
+    doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10);
+    doc.autoTable({ head: [tableData[0]], body: tableData.slice(1) });
     doc.save('budget.pdf');
+  };
+
+  const handleFinalizeBudget = () => {
+    // Criar um novo objeto de orçamento
+    const newBudget = {
+      id: budgets.length + 1, // Simple ID generation for now
+      customerName: selectedClient ? selectedClient.name : 'Novo Cliente', // Use selected client name or 'Novo Cliente' if new
+      totalValue: budgetItems.reduce((total, item) => total + item.price, 0), // Sum up prices of all items
+      creationDate: new Date(),
+      status: 'pendente', // Set status to 'pendente'
+      items: budgetItems, // Save budget items
+    };
+
+    // Atualizar a lista de orçamentos no estado do App
+    setBudgets([...budgets, newBudget]);
+
+    alert('Orçamento finalizado e status definido como "pendente".');
+    // Em um futuro próximo, você precisará implementar a lógica para salvar os dados do orçamento
+    // e atualizar o estado da aplicação para refletir o orçamento pendente.
   };
 
 
@@ -132,9 +150,9 @@ function Budgets({ customers, products, accessories, setCustomers }) {
     const nextCustomerId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
     const updatedCustomers = [...customers, { ...newCustomer, id: nextCustomerId }];
     setCustomers(updatedCustomers);
-    setSelectedClient({ ...newCustomer, id: nextCustomerId }); // Select the new customer
-    setShowNewCustomerForm(false); // Hide the new customer form
-    setNewCustomer({ name: '', phone: '', email: '', address: '' }); // Clear the form
+    setSelectedClient({ ...newCustomer, id: nextCustomerId });
+    setShowNewCustomerForm(false);
+    setNewCustomer({ name: '', phone: '', email: '', address: '' });
   };
 
 
@@ -206,10 +224,10 @@ function Budgets({ customers, products, accessories, setCustomers }) {
                 <input type="number" value={height} onChange={handleHeightChange} />
               </>
             )}
-             <button type="button" onClick={handleAddItemToBudget}>Adicionar Produto</button> {/* Add Product button */}
+             <button type="button" onClick={handleAddItemToBudget}>Adicionar Produto</button>
           </div>
         )}
-      <div className="accessories-section"> {/* New section for accessories */}
+      <div className="accessories-section">
           <h2>Acessórios</h2>
           <select value={selectedAccessory?.id || ''} onChange={handleAccessorySelect}>
             <option value="">Selecione um Acessório</option>
@@ -252,6 +270,7 @@ function Budgets({ customers, products, accessories, setCustomers }) {
       </div>
 
       <button onClick={generatePDF}>Gerar PDF</button>
+      <button onClick={handleFinalizeBudget}>Finalizar Orçamento</button> {/* Botão "Finalizar Orçamento" adicionado */}
     </div>
   );
 }
