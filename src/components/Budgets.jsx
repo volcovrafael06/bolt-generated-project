@@ -4,6 +4,7 @@ import 'jspdf-autotable';
 import './Budgets.css'; // Import CSS file for styling
 
 function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) { // Recebendo budgets como prop
+  console.log("Budgets component - typeof setBudgets:", typeof setBudgets); // Debug log
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedAccessory, setSelectedAccessory] = useState(null);
@@ -118,9 +119,12 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   };
 
   const handleFinalizeBudget = () => {
+    console.log("handleFinalizeBudget - typeof setBudgets:", typeof setBudgets); // Debug log
+    console.log("Value of budgets inside handleFinalizeBudget:", budgets); // Debug log
+    const currentBudgets = Array.isArray(budgets) ? budgets : []; // Garante que budgets é um array
     // Criar um novo objeto de orçamento
     const newBudget = {
-      id: budgets.length + 1, // Simple ID generation for now
+      id: currentBudgets.length + 1, // Usa currentBudgets.length para evitar erro
       customerName: selectedClient ? selectedClient.name : 'Novo Cliente', // Use selected client name or 'Novo Cliente' if new
       totalValue: budgetItems.reduce((total, item) => total + item.price, 0), // Sum up prices of all items
       creationDate: new Date(),
@@ -129,7 +133,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     };
 
     // Atualizar a lista de orçamentos no estado do App
-    setBudgets([...budgets, newBudget]);
+    setBudgets([...currentBudgets, newBudget]); // Usa currentBudgets aqui também
 
     alert('Orçamento finalizado e status definido como "pendente".');
     // Em um futuro próximo, você precisará implementar a lógica para salvar os dados do orçamento

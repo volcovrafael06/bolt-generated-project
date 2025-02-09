@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import { Route, Routes, Link } from 'react-router-dom';
 import './App.css';
 import BudgetStatusPage from './components/BudgetStatusPage';
 import Budgets from './components/Budgets';
@@ -34,10 +34,13 @@ function App() {
 
 
   return (
-    <Router>
       <div className="app">
         <header className="app-header">
-          <h1>PersiFIX</h1> {/* Aqui você pode querer exibir o logo */}
+          {companyLogo ? (
+            <img src={URL.createObjectURL(companyLogo)} alt="Company Logo" style={{ maxHeight: '50px' }} />
+          ) : (
+            <h1>PersiFIX</h1>
+          )}
           <nav>
             <ul>
               <li><Link to="/">Home</Link></li>
@@ -53,7 +56,7 @@ function App() {
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<BudgetStatusPage />} />
+            <Route path="/" element={<BudgetStatusPage budgets={budgets} />} /> {/* Pass budgets as prop here */}
             <Route path="/login" element={<Login />} />
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
@@ -61,7 +64,7 @@ function App() {
             <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} />} /> {/* Passando validadeOrcamento */}
             <Route path="/budgets/new" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} /> {/* Passando budgets como prop */}
             <Route path="/reports" element={<Reports />} />
-            <Route path="/configuracoes" element={<Configuracoes setCompanyLogo={setCompanyLogo} setValidadeOrcamento={setValidadeOrcamento} />} /> {/* Passando setValidadeOrcamento */}
+            <Route path="/configuracoes" element={<Configuracoes setCompanyLogo={setCompanyLogo} setValidadeOrcamento={setValidadeOrcamento} validadeOrcamento={validadeOrcamento} />} /> {/* Passando validadeOrcamento */}
           </Routes>
         </main>
 
@@ -69,7 +72,6 @@ function App() {
           <p>© 2024 PersiFIX Sistemas</p>
         </footer>
       </div>
-    </Router>
   );
 }
 

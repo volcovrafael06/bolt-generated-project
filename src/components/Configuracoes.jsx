@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react'; // Import useRef e useEffect
+import React, { useState, useRef, useEffect } from 'react';
 
-function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado setValidadeOrcamento como prop
+function Configuracoes({ setCompanyLogo, setValidadeOrcamento, validadeOrcamento }) { // Ensure validadeOrcamento is in props
   const [showNewSellerForm, setShowNewSellerForm] = useState(false);
   const [newSellerName, setNewSellerName] = useState('');
   const [newSellerPassword, setNewSellerPassword] = useState('');
   const [showSellerMenu, setShowSellerMenu] = useState(false);
   const [sellers, setSellers] = useState([
-    { id: 1, name: 'Vendedor 1', status: 'ativo' }, // Adicionado status para o vendedor
-    { id: 2, name: 'Vendedor 2', status: 'ativo' }, // Adicionado status para o vendedor
+    { id: 1, name: 'Vendedor 1', status: 'ativo' },
+    { id: 2, name: 'Vendedor 2', status: 'ativo' },
   ]);
 
   const [razaoSocial, setRazaoSocial] = useState('');
@@ -15,14 +15,20 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
   const [endereco, setEndereco] = useState('');
   const [telefone, setTelefone] = useState('');
   const [logoEmpresa, setLogoEmpresa] = useState(null);
-  const [validadeOrcamento, setValidadeOrcamento] = useState('');
+  const [validadeOrcamentoLocal, setValidadeOrcamentoLocal] = useState('');
   const [logoPreview, setLogoPreview] = useState(null);
 
-  const menuRef = useRef(null); // Ref para o menu dropdown
+  useEffect(() => {
+    // Initialize local state with prop value on mount or when prop changes
+    setValidadeOrcamentoLocal(validadeOrcamento);
+  }, [validadeOrcamento]);
+
+
+  const menuRef = useRef(null);
 
   const handleToggleSellerMenu = () => {
     setShowSellerMenu(!showSellerMenu);
-    setShowNewSellerForm(false); // Fecha o formulário ao abrir/fechar o menu
+    setShowNewSellerForm(false);
   };
 
   const handleDeleteSeller = (sellerId) => {
@@ -44,12 +50,11 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
 
   const handleEditSeller = (sellerId) => {
     alert(`Opção de editar vendedor com ID ${sellerId} será implementada.`);
-    // Aqui você pode adicionar a lógica para editar o vendedor, como abrir um formulário de edição
   };
 
   const handleCreateSellerMenuClick = () => {
     setShowNewSellerForm(true);
-    setShowSellerMenu(false); // Fecha o menu dropdown ao clicar em "Criar Novo Vendedor"
+    setShowSellerMenu(false);
   };
 
   const handleCancelCreateSeller = () => {
@@ -59,7 +64,7 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
   };
 
   const handleCreateNewSeller = () => {
-    const newSeller = { id: sellers.length + 1, name: newSellerName, status: 'ativo' }; // Novo vendedor começa como ativo
+    const newSeller = { id: sellers.length + 1, name: newSellerName, status: 'ativo' };
     setSellers([...sellers, newSeller]);
     alert(`Novo vendedor "${newSellerName}" criado com sucesso! (Senha: ${newSellerPassword})`);
     setShowNewSellerForm(false);
@@ -74,11 +79,11 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
       endereco,
       telefone,
       logoEmpresa: logoEmpresa ? logoEmpresa.name : null,
-      validadeOrcamento, // Usando o estado local validadeOrcamento
+      validadeOrcamento: validadeOrcamentoLocal,
     };
     alert(`Configurações salvas com sucesso!\n\n${JSON.stringify(configuracoes, null, 2)}`);
     setCompanyLogo(logoEmpresa);
-    setValidadeOrcamento(validadeOrcamento); // Atualiza o estado no componente pai
+    setValidadeOrcamento(validadeOrcamentoLocal);
   };
 
   const handleLogoEmpresaChange = (e) => {
@@ -99,7 +104,6 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
     }
   };
 
-  // Fechar dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target) && !event.target.closest('button[onClick="handleToggleSellerMenu"]')) {
@@ -118,7 +122,6 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
     <div>
       <h2>Configurações</h2>
       <form>
-        {/* Campos de configuração da empresa */}
         <div>
           <label htmlFor="razaoSocial">Razão Social:</label>
           <input type="text" id="razaoSocial" name="razaoSocial" value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} />
@@ -147,14 +150,13 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
         </div>
         <div>
           <label htmlFor="validadeOrcamento">Validade do Orçamento (dias):</label>
-          <input type="number" id="validadeOrcamento" name="validadeOrcamento" value={validadeOrcamento} onChange={(e) => setValidadeOrcamento(e.target.value)} />
+          <input type="number" id="validadeOrcamento" name="validadeOrcamento" value={validadeOrcamentoLocal} onChange={(e) => setValidadeOrcamentoLocal(e.target.value)} />
         </div>
 
-        {/* Dropdown de vendedores */}
-        <div style={{ position: 'relative' }}> {/* Container para posicionamento relativo */}
+        <div style={{ position: 'relative' }}>
           <button type="button" onClick={handleToggleSellerMenu}>Gerenciar Vendedores</button>
           {showSellerMenu && (
-            <div ref={menuRef} className="seller-menu dropdown"> {/* Adiciona classe dropdown */}
+            <div ref={menuRef} className="seller-menu dropdown">
               <h3>Vendedores</h3>
               <ul>
                 {sellers.map(seller => (
@@ -175,7 +177,6 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
           )}
         </div>
 
-        {/* Formulário de novo vendedor */}
         {showNewSellerForm && (
           <div className="new-seller-form">
             <h3>Criar Novo Vendedor</h3>
@@ -194,7 +195,6 @@ function Configuracoes({ setCompanyLogo, setValidadeOrcamento }) { // Adicionado
           </div>
         )}
 
-        {/* Botão Salvar Configurações */}
         <div>
           <button type="button" onClick={handleSaveConfiguracoes}>Salvar Configurações</button>
         </div>
