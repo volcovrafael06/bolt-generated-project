@@ -3,9 +3,10 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './Budgets.css'; // Import CSS file for styling
 
-function Budgets({ customers, products, setCustomers }) {
+function Budgets({ customers, products, accessories, setCustomers }) {
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedAccessory, setSelectedAccessory] = useState(null); // New state for selected accessory
   const [length, setLength] = useState(0);
   const [height, setHeight] = useState(0);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
@@ -35,6 +36,11 @@ function Budgets({ customers, products, setCustomers }) {
     setSelectedProduct(products.find(product => product.id === selectedProductId));
   };
 
+  const handleAccessorySelect = (event) => { // New handler for accessory selection
+    const selectedAccessoryId = parseInt(event.target.value, 10);
+    setSelectedAccessory(accessories.find(accessory => accessory.id === selectedAccessoryId));
+  };
+
   const handleLengthChange = (event) => {
     setLength(parseFloat(event.target.value));
   };
@@ -44,6 +50,8 @@ function Budgets({ customers, products, setCustomers }) {
   };
 
   const handleAddItemToBudget = () => {
+    let newItem = null;
+
     if (selectedProduct) {
       let calculatedPrice = selectedProduct.salePrice; // Default price is salePrice
       if (selectedProduct.calculationMethod === 'm2') {
@@ -55,18 +63,31 @@ function Budgets({ customers, products, setCustomers }) {
         calculatedPrice = 0; // Default to 0 if calculation fails or is not a number
       }
 
-      const newItem = {
-        product: selectedProduct,
+      newItem = {
+        type: 'product', // Indicate item type
+        item: selectedProduct,
         length: length,
         height: height,
         price: calculatedPrice, // Store calculated price
       };
-      setBudgetItems([...budgetItems, newItem]);
       setSelectedProduct(null); // Clear selected product after adding
       setLength(0);
       setHeight(0);
+
+    } else if (selectedAccessory) {
+      newItem = {
+        type: 'accessory', // Indicate item type
+        item: selectedAccessory,
+        price: selectedAccessory.price,
+      };
+      setSelectedAccessory(null); // Clear selected accessory after adding
     } else {
-      alert('Selecione um produto para adicionar ao orçamento.');
+      alert('Selecione um produto ou acessório para adicionar ao orçamento.');
+      return; // Exit if no product or accessory selected
+    }
+
+    if (newItem) {
+      setBudgetItems([...budgetItems, newItem]);
     }
   };
 
@@ -74,15 +95,29 @@ function Budgets({ customers, products, setCustomers }) {
   const generatePDF = () => {
     const doc = new jsPDF();
     const tableData = [
-      ['Produto', 'Comprimento', 'Altura', 'Preço'], // Table header with 'Preço'
-      ...budgetItems.map(item => [ // Map budget items to table rows
-        item.product.name, item.length, item.height, item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A' // Price in table with check
-      ])
+      ['Item', 'Detalhes', 'Preço'], // Updated table header
+      ...budgetItems.map(budgetItem => {
+        if (budgetItem.type === 'product') {
+          return [
+            budgetItem.item.name,
+            `Modelo: ${budgetItem.item.model}, Comprimento: ${budgetItem.length}, Altura: ${budgetItem.height}`, // Product details
+            budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
+          ];
+        } else if (budgetItem.type === 'accessory') {
+          return [
+            budgetItem.item.name,
+            'Acessório', // Accessory description
+            budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
+          ];
+        }
+        return []; // Default return for safety
+      })
     ];
     doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10); // Client name in PDF
     doc.autoTable({ head: [tableData[0]], body: tableData.slice(1) }); // Use tableData for autoTable
     doc.save('budget.pdf');
   };
+
 
   const handleNewCustomerInputChange = (e) => {
     setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
@@ -174,7 +209,27 @@ function Budgets({ customers, products, setCustomers }) {
              <button type="button" onClick={handleAddItemToBudget}>Adicionar Produto</button> {/* Add Product button */}
           </div>
         )}
+      <div className="accessories-section"> {/* New section for accessories */}
+          <h2>Acessórios</h2>
+          <select value={selectedAccessory?.id || ''} onChange={handleAccessorySelect}>
+            <option value="">Selecione um Acessório</option>
+            {accessories.map(accessory => (
+              <option key={accessory.id} value={accessory.id}>
+                {accessory.name} - R$ {accessory.price.toFixed(2)}
+              </option>
+            ))}
+          </select>
+          {selectedAccessory && (
+            <div>
+              <p>Detalhes do Acessório:</p>
+              <p>Nome: {selectedAccessory.name}</p>
+              <p>Preço: R$ {selectedAccessory.price.toFixed(2)}</p>
+              <button type="button" onClick={handleAddItemToBudget}>Adicionar Acessório</button>
+            </div>
+          )}
+        </div>
       </div>
+
 
       {/* Display Budget Items */}
       <div className="budget-items-section">
@@ -183,7 +238,11 @@ function Budgets({ customers, products, setCustomers }) {
           <ul>
             {budgetItems.map((item, index) => (
               <li key={index}>
-                {item.product.name} - {item.product.model} - Comprimento: {item.length} - Altura: {item.height} - Preço: {item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}
+                {item.type === 'product' ? (
+                  `${item.item.name} - ${item.item.model} - Comprimento: ${item.length} - Altura: ${item.height} - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
+                ) : (
+                  `${item.item.name} - Acessório - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
+                )}
               </li>
             ))}
           </ul>
