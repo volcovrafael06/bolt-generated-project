@@ -1,0 +1,21 @@
+.budgets-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.client-section, .product-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.client-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.new-client-form {
+  margin-top: 10px;
+}
