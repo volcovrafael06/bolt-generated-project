@@ -1,28 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-function BudgetList({ budgets, validadeOrcamento }) { // Adicionado validadeOrcamento como prop
-
-  const handleViewBudget = (budgetId) => {
-    alert(`Visualizar Orçamento ID: ${budgetId}`);
-    // In a real app, you would navigate to a "view budget" page
-  };
-
-  const handleEditBudget = (budgetId) => {
-    alert(`Editar Orçamento ID: ${budgetId}`);
-    // In a real app, you would navigate to an "edit budget" page
-  };
-
-  const handleFinalizeBudget = (budgetId) => {
-    alert(`Finalizar Orçamento ID: ${budgetId}`);
-    // In a real app, you would update the budget status to "finalized"
-  };
-
-  const handleCancelBudget = (budgetId) => {
-    alert(`Cancelar Orçamento ID: ${budgetId}`);
-    // In a real app, you would update the budget status to "cancelled"
-  };
-
+function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget }) {
 
   return (
     <div>
@@ -33,29 +12,31 @@ function BudgetList({ budgets, validadeOrcamento }) { // Adicionado validadeOrca
       <h2>Orçamentos Existentes</h2>
       <ul>
         {budgets.map(budget => {
-          const creationDate = new Date(budget.creationDate); // Assuming creationDate is stored as a string or timestamp
+          const creationDate = new Date(budget.creationDate);
           const validityDate = new Date(creationDate);
-          validityDate.setDate(validityDate.getDate() + parseInt(validadeOrcamento, 10)); // Usando validadeOrcamento
+          validityDate.setDate(validityDate.getDate() + parseInt(validadeOrcamento, 10));
           const formattedCreationDate = creationDate.toLocaleDateString();
           const formattedValidityDate = validityDate.toLocaleDateString();
           const isExpired = new Date() > validityDate;
           const status = isExpired ? 'Cancelado' : budget.status;
-
 
           return (
             <li key={budget.id}>
               {budget.customerName} - Status: {status} - Total: R$ {budget.totalValue.toFixed(2)}
               <br />
               Criado em: {formattedCreationDate} - Valido até: {formattedValidityDate}
-              <button onClick={() => handleViewBudget(budget.id)}>Ver</button>
-              <button onClick={() => handleEditBudget(budget.id)}>Editar</button>
-              <button onClick={() => handleFinalizeBudget(budget.id)}>Finalizar</button>
-              <button onClick={() => handleCancelBudget(budget.id)}>Cancelar</button>
+              <Link to={`/budgets/${budget.id}/view`}>
+                <button>Ver</button>
+              </Link>
+              <Link to={`/budgets/${budget.id}/edit`}> {/* Link to edit route */}
+                <button>Editar</button>
+              </Link>
+              <button onClick={() => onFinalizeBudget(budget.id)} >Finalizar</button>
+              <button onClick={() => onCancelBudget(budget.id)} >Cancelar</button>
             </li>
           );
         })}
       </ul>
-
     </div>
   );
 }

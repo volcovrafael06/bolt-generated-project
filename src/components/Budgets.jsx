@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom'; // Import useParams
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './Budgets.css'; // Import CSS file for styling
 
-function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) { // Recebendo budgets como prop
+function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets, companyLogo }) { // Recebendo budgets como prop e companyLogo
   console.log("Budgets component - typeof setBudgets:", typeof setBudgets); // Debug log
+  const { budgetId } = useParams(); // Get budgetId from URL params
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedAccessory, setSelectedAccessory] = useState(null);
@@ -18,6 +20,23 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     address: '',
   });
   const [budgetItems, setBudgetItems] = useState([]);
+  const [isBudgetFinalized, setIsBudgetFinalized] = useState(false); // New state variable
+  const [finalizedBudget, setFinalizedBudget] = useState(null); // New state for finalized budget
+
+  useEffect(() => {
+    if (budgetId) {
+      const budgetToEdit = budgets.find(budget => budget.id === parseInt(budgetId, 10));
+      if (budgetToEdit) {
+        // Pre-populate form with budget data
+        setSelectedClient(customers.find(c => c.name === budgetToEdit.customerName) || null); // Assuming customer name is stored
+        setBudgetItems(budgetToEdit.items);
+        // You might need to pre-select products and accessories in dropdowns if needed
+        // based on budgetToEdit.items, but it's complex as dropdowns are for single selection.
+        // For now, budget items are loaded, client is selected.
+      }
+    }
+  }, [budgetId, budgets, customers]);
+
 
   const handleClientSelect = (event) => {
     if (event.target.value === 'new-customer') {
@@ -94,28 +113,100 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    const tableData = [
-      ['Item', 'Detalhes', 'Preço'],
-      ...budgetItems.map(budgetItem => {
-        if (budgetItem.type === 'product') {
-          return [
-            budgetItem.item.name,
-            `Modelo: ${budgetItem.item.model}, Comprimento: ${budgetItem.length}, Altura: ${budgetItem.height}`,
-            budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
-          ];
-        } else if (budgetItem.type === 'accessory') {
-          return [
-            budgetItem.item.name,
-            'Acessório',
-            budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
-          ];
-        }
-        return [];
-      })
-    ];
-    doc.text(`Cliente: ${selectedClient?.name || 'Nenhum cliente selecionado'}`, 10, 10);
-    doc.autoTable({ head: [tableData[0]], body: tableData.slice(1) });
-    doc.save('budget.pdf');
+
+    // Company Logo and Header
+    if (companyLogo) {
+      const imgData = URL.createObjectURL(companyLogo);
+      doc.addImage(imgData, 'JPEG', 10, 10, 50, 15); // Adjust position and size as needed
+    }
+    doc.setFontSize(12);
+    doc.text('PersiFIX Sistemas', 10, 30); // Company Name - adjust position
+    doc.setFontSize(10);
+    doc.text('Tel.: (XX) XXXX-XXXX', 10, 35); // Company Phone - adjust position
+    doc.text('WhatsApp: (XX) XXXXX-XXXX', 10, 40); // Company WhatsApp - adjust position
+    doc.text('Email: email@persifix.com', 10, 45); // Company Email - adjust position
+
+    // Budget Title
+    doc.setFontSize(16);
+    doc.text('Orçamento', 80, 30); // Budget Title - adjust position
+
+    // Budget Number and Date
+    const budgetNumber = budgets.length + 1; // Simple budget number - improve logic later
+    const creationDate = new Date().toLocaleDateString('pt-BR');
+    doc.setFontSize(10);
+    doc.text(`Orçamento Nº: ${budgetNumber}`, 150, 15); // Budget Number - adjust position
+    doc.text(`Criado em: ${creationDate}`, 150, 20); // Creation Date - adjust position
+
+
+    // Client Information
+    doc.setFontSize(12);
+    doc.text('Cliente:', 10, 60); // Client Label - adjust position
+    doc.setFontSize(10);
+    doc.text(`Nome: ${selectedClient?.name || 'N/A'}`, 10, 65);
+    doc.text(`Telefone: ${selectedClient?.phone || 'N/A'}`, 10, 70);
+    doc.text(`Email: ${selectedClient?.email || 'N/A'}`, 10, 75);
+    doc.text(`Endereço: ${selectedClient?.address || 'N/A'}`, 10, 80);
+
+    // Items Table
+    const tableColumn = ["Código", "Descrição", "Qtd", "Preço Unit.", "Total"];
+    const tableRows = [];
+
+    budgetItems.forEach((budgetItem, index) => {
+      let description = '';
+      let code = '';
+      let quantity = '';
+      let unitPrice = 0;
+
+      if (budgetItem.type === 'product') {
+        description = `${budgetItem.item.name} - ${budgetItem.item.model}`;
+        code = budgetItem.item.code;
+        quantity = (budgetItem.item.calculationMethod === 'm2') ? `${budgetItem.length} x ${budgetItem.height} m²` : '1'; // Adjust quantity display
+        unitPrice = budgetItem.item.salePrice;
+      } else if (budgetItem.type === 'accessory') {
+        description = budgetItem.item.name;
+        code = 'N/A';
+        quantity = '1';
+        unitPrice = budgetItem.item.price;
+      }
+
+      const rowData = [
+        code,
+        description,
+        quantity,
+        unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        budgetItem.price ? budgetItem.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
+      ];
+      tableRows.push(rowData);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 90, // Adjust table start Y position
+    });
+
+    // Calculate totals
+    let subTotal = budgetItems.reduce((total, item) => total + item.price, 0);
+    let discount = 0; // Implement discount logic later
+    let totalFinal = subTotal - discount;
+
+    const finalY = doc.autoTable.previous.finalY; // Get Y position after the table
+
+    // Total calculations
+    doc.setFontSize(12);
+    doc.text(`Subtotal: ${subTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 140, finalY + 10); // Adjust position
+    doc.text(`Desconto: ${discount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 140, finalY + 17); // Adjust position
+    doc.setFontSize(14);
+    doc.text(`Total Final: ${totalFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 140, finalY + 25); // Adjust position
+
+    // Observations
+    doc.setFontSize(12);
+    doc.text('Observações:', 10, finalY + 35); // Adjust position
+    doc.setFontSize(10);
+    doc.text('Retirada dos produtos em loja', 10, finalY + 40); // Example observation - adjust position
+
+
+    doc.save(`budget-${budgetNumber}.pdf`);
   };
 
   const handleFinalizeBudget = () => {
@@ -135,9 +226,19 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     // Atualizar a lista de orçamentos no estado do App
     setBudgets([...currentBudgets, newBudget]); // Usa currentBudgets aqui também
 
+    setFinalizedBudget(newBudget); // Store finalized budget in state
+    setBudgetItems([]); // Clear budget items after finalize
+    setIsBudgetFinalized(true); // Set isBudgetFinalized to true after finalize
     alert('Orçamento finalizado e status definido como "pendente".');
     // Em um futuro próximo, você precisará implementar a lógica para salvar os dados do orçamento
     // e atualizar o estado da aplicação para refletir o orçamento pendente.
+  };
+
+  const handleCancelBudget = () => {
+    setBudgetItems([]); // Clear budget items
+    setIsBudgetFinalized(false); // Reset isBudgetFinalized when budget is cancelled
+    setFinalizedBudget(null); // Clear finalized budget when cancelled
+    alert('Orçamento cancelado.');
   };
 
 
@@ -273,8 +374,33 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
         )}
       </div>
 
-      <button onClick={generatePDF}>Gerar PDF</button>
-      <button onClick={handleFinalizeBudget}>Finalizar Orçamento</button> {/* Botão "Finalizar Orçamento" adicionado */}
+      {isBudgetFinalized && (
+        <div className="finalized-budget-section">
+          <h3>Orçamento Finalizado</h3>
+          {finalizedBudget && (
+            <div>
+              <p><strong>Cliente:</strong> {finalizedBudget.customerName}</p>
+              <h4>Itens:</h4>
+              <ul>
+                {finalizedBudget.items.map((item, index) => (
+                  <li key={index}>
+                    {item.type === 'product' ? (
+                      `${item.item.name} - ${item.item.model} - Qtd: ${item.item.calculationMethod === 'm2' ? `${item.length}x${item.height} m²` : '1'} - Preço: ${item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                    ) : (
+                      `${item.item.name} - Acessório - Preço: ${item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p><strong>Total:</strong> {finalizedBudget.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            </div>
+          )}
+          <button onClick={generatePDF}>Gerar PDF</button>
+        </div>
+      )}
+
+      {!isBudgetFinalized && <button onClick={handleFinalizeBudget}>Finalizar Orçamento</button>}
+      <button onClick={handleCancelBudget}>Cancelar Orçamento</button>
     </div>
   );
 }

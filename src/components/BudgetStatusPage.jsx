@@ -1,20 +1,34 @@
 import React from 'react';
+import BudgetList from './BudgetList'; // Import BudgetList component
 
-function BudgetStatusPage({ budgets }) {
+function BudgetStatusPage({ budgets, setBudgets, validadeOrcamento }) { // Receive setBudgets and validadeOrcamento as props
+  // Function to finalize a budget
+  const handleFinalizeBudget = (budgetId) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+    );
+    setBudgets(updatedBudgets);
+    alert(`Orçamento ${budgetId} finalizado.`);
+  };
+
+  // Function to cancel a budget
+  const handleCancelBudget = (budgetId) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
+    );
+    setBudgets(updatedBudgets);
+    alert(`Orçamento ${budgetId} cancelado.`);
+  };
+
   return (
     <div>
-      <h2>Budget Status</h2>
-      <ul>
-        {budgets.map(budget => (
-          <li key={budget.id}>
-            {budget.customerName} - Status: {budget.status} - Total: R$ {budget.totalValue.toFixed(2)}
-            <button onClick={() => alert('View Budget')}>Ver</button>
-            <button onClick={() => alert('Edit Budget')}>Editar</button>
-            <button onClick={() => alert('Finalize Budget')}>Finalizar</button>
-            <button onClick={() => alert('Cancel Budget')}>Cancelar</button>
-          </li>
-        ))}
-      </ul>
+      <h2>Status dos Orçamentos</h2>
+      <BudgetList
+        budgets={budgets}
+        validadeOrcamento={validadeOrcamento}
+        onFinalizeBudget={handleFinalizeBudget} // Pass handleFinalizeBudget as prop
+        onCancelBudget={handleCancelBudget} // Pass handleCancelBudget as prop
+      />
     </div>
   );
 }
