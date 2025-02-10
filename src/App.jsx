@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Route, Routes, Link } from 'react-router-dom';
+import { Route, Routes, Link, NavLink } from 'react-router-dom';
 import './App.css';
-import BudgetStatusPage from './components/BudgetStatusPage';
+import BudgetStatusPage from './components/BudgetStatusPage'; // Renamed to BudgetListContainer below
 import Budgets from './components/Budgets';
 import Customers from './components/Customers';
 import Products from './components/Products';
@@ -10,7 +10,8 @@ import Reports from './components/Reports';
 import Login from './components/Login';
 import Configuracoes from './components/Configuracoes';
 import BudgetList from './components/BudgetList';
-import BudgetDetailsPage from './components/BudgetDetailsPage'; // Import BudgetDetailsPage
+import BudgetDetailsPage from './components/BudgetDetailsPage';
+import HomePage from './components/HomePage'; // Import HomePage
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -50,28 +51,28 @@ function App() {
           )}
           <nav>
             <ul>
-              <li><Link to="/">Home</Link></li>
-              <li><Link to="/customers">Clientes</Link></li>
-              <li><Link to="/products">Produtos</Link></li>
-              <li><Link to="/accessories">Acessórios</Link></li>
-              <li><Link to="/budgets">Orçamentos</Link></li>
-              <li><Link to="/reports">Relatórios</Link></li>
-              <li><Link to="/configuracoes">Configurações</Link></li>
+              <li><NavLink to="/" end>Home</NavLink></li>
+              <li><NavLink to="/customers">Clientes</NavLink></li>
+              <li><NavLink to="/products">Produtos</NavLink></li>
+              <li><NavLink to="/accessories">Acessórios</NavLink></li>
+              <li><NavLink to="/budgets">Orçamentos</NavLink></li>
+              <li><NavLink to="/reports">Relatórios</NavLink></li>
+              <li><NavLink to="/configuracoes">Configurações</NavLink></li>
             </ul>
           </nav>
         </header>
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<BudgetStatusPage budgets={budgets} setBudgets={setBudgets} validadeOrcamento={validadeOrcamento} />} />
+            <Route path="/" element={<HomePage />} /> {/* HomePage for root path */}
             <Route path="/login" element={<Login />} />
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
             <Route path="/accessories" element={<Accessories accessories={accessories} setAccessories={setAccessories} />} />
-            <Route path="/budgets" element={<BudgetStatusPage budgets={budgets} setBudgets={setBudgets} validadeOrcamento={validadeOrcamento} />} />
+            <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} />} /> {/* BudgetList for /budgets path */}
             <Route path="/budgets/new" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
             <Route path="/budgets/:budgetId/view" element={<BudgetDetailsPage budgets={budgets} />} />
-            <Route path="/budgets/:budgetId/edit" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} /> {/* Changed route to Budgets component */}
+            <Route path="/budgets/:budgetId/edit" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/configuracoes" element={<Configuracoes setCompanyLogo={setCompanyLogo} setValidadeOrcamento={setValidadeOrcamento} validadeOrcamento={validadeOrcamento} />} />
           </Routes>

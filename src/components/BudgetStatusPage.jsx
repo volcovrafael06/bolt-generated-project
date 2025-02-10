@@ -1,7 +1,8 @@
 import React from 'react';
-import BudgetList from './BudgetList'; // Import BudgetList component
+import VisitScheduler from './VisitScheduler'; // Certifique-se de que esta importação está correta
+import BudgetList from './BudgetList';
 
-function BudgetStatusPage({ budgets, setBudgets, validadeOrcamento }) { // Receive setBudgets and validadeOrcamento as props
+function BudgetStatusPage({ budgets, setBudgets, validadeOrcamento }) {
   // Function to finalize a budget
   const handleFinalizeBudget = (budgetId) => {
     const updatedBudgets = budgets.map(budget =>
@@ -22,12 +23,15 @@ function BudgetStatusPage({ budgets, setBudgets, validadeOrcamento }) { // Recei
 
   return (
     <div>
-      <h2>Status dos Orçamentos</h2>
+      <h2>Agendamentos e Visitas para Orçamento</h2>
+      <VisitScheduler /> {/* Render VisitScheduler component here */}
+      <br/>
+      <h2>Orçamentos Existentes</h2>
       <BudgetList
         budgets={budgets}
         validadeOrcamento={validadeOrcamento}
-        onFinalizeBudget={handleFinalizeBudget} // Pass handleFinalizeBudget as prop
-        onCancelBudget={handleCancelBudget} // Pass handleCancelBudget as prop
+        onFinalizeBudget={handleFinalizeBudget}
+        onCancelBudget={handleCancelBudget}
       />
     </div>
   );
