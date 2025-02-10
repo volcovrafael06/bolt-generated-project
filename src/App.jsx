@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Route, Routes, Link, NavLink } from 'react-router-dom';
+import { Route, Routes, Link, NavLink, BrowserRouter as Router } from 'react-router-dom';
 import './App.css';
-import BudgetStatusPage from './components/BudgetStatusPage'; // Renamed to BudgetListContainer below
+import BudgetStatusPage from './components/BudgetStatusPage';
 import Budgets from './components/Budgets';
 import Customers from './components/Customers';
 import Products from './components/Products';
@@ -11,7 +11,7 @@ import Login from './components/Login';
 import Configuracoes from './components/Configuracoes';
 import BudgetList from './components/BudgetList';
 import BudgetDetailsPage from './components/BudgetDetailsPage';
-import HomePage from './components/HomePage'; // Import HomePage
+import HomePage from './components/HomePage';
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -21,9 +21,9 @@ function App() {
     { id: 2, name: 'Cliente B', phone: '9876-5432', email: 'clienteb@email.com', address: 'Rua Y' },
   ]);
   const [products, setProducts] = useState([
-    { id: 1, name: 'Produto 1', model: 'Modelo X', material: 'Ferro', code: 'PROD1', salePrice: 150.00, calculationMethod: 'unit' },
-    { id: 2, name: 'Produto 2', model: 'Wave', material: 'Aluminio', code: 'PROD2', salePrice: 200.00, calculationMethod: 'm2' },
-    { id: 3, name: 'Produto 3', model: 'Modelo Z', material: 'Aço', code: 'PROD3', salePrice: 300.00, calculationMethod: 'unit' },
+    { id: 1, product: 'Produto 1', model: 'Modelo X', material: 'Ferro', code: 'PROD1', salePrice: 150.00, calculationMethod: 'unit' },
+    { id: 2, product: 'Produto 2', model: 'Wave', material: 'Aluminio', code: 'PROD2', salePrice: 200.00, calculationMethod: 'm2' },
+    { id: 3, product: 'Produto 3', model: 'Modelo Z', material: 'Aço', code: 'PROD3', salePrice: 300.00, calculationMethod: 'unit' },
   ]);
    const [accessories, setAccessories] = useState([
     { id: 1, name: 'Acessório 1', price: 25.00 },
@@ -64,12 +64,12 @@ function App() {
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<HomePage />} /> {/* HomePage for root path */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<Login onLogin={setIsLoggedIn} companyLogo={companyLogo} />} /> {/* Pass companyLogo prop to Login */}
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
             <Route path="/accessories" element={<Accessories accessories={accessories} setAccessories={setAccessories} />} />
-            <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} />} /> {/* BudgetList for /budgets path */}
+            <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} />} />
             <Route path="/budgets/new" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
             <Route path="/budgets/:budgetId/view" element={<BudgetDetailsPage budgets={budgets} />} />
             <Route path="/budgets/:budgetId/edit" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
