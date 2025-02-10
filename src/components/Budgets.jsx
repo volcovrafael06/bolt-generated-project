@@ -22,6 +22,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [budgetItems, setBudgetItems] = useState([]);
   const [isBudgetFinalized, setIsBudgetFinalized] = useState(false); // New state variable
   const [finalizedBudget, setFinalizedBudget] = useState(null); // New state for finalized budget
+  const [editingItemIndex, setEditingItemIndex] = useState(null); // Track the index of the item being edited
 
   useEffect(() => {
     if (budgetId) {
@@ -69,6 +70,25 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     setHeight(parseFloat(event.target.value));
   };
 
+  const handleEditItem = (index) => {
+    const itemToEdit = budgetItems[index];
+    setEditingItemIndex(index);
+
+    if (itemToEdit.type === 'product') {
+      setSelectedProduct(itemToEdit.item);
+      setLength(itemToEdit.length);
+      setHeight(itemToEdit.height);
+    } else if (itemToEdit.type === 'accessory') {
+      setSelectedAccessory(itemToEdit.item);
+    }
+  };
+
+  const handleRemoveItem = (index) => {
+    const updatedItems = [...budgetItems];
+    updatedItems.splice(index, 1);
+    setBudgetItems(updatedItems);
+  };
+
   const handleAddItemToBudget = () => {
     let newItem = null;
 
@@ -106,7 +126,16 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     }
 
     if (newItem) {
-      setBudgetItems([...budgetItems, newItem]);
+      if (editingItemIndex !== null) {
+        // If editing an item, update the item in the array
+        const updatedItems = [...budgetItems];
+        updatedItems[editingItemIndex] = newItem;
+        setBudgetItems(updatedItems);
+        setEditingItemIndex(null); // Clear the editing index
+      } else {
+        // Otherwise, add the new item to the array
+        setBudgetItems([...budgetItems, newItem]);
+      }
     }
   };
 
@@ -329,7 +358,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                 <input type="number" value={height} onChange={handleHeightChange} />
               </>
             )}
-             <button type="button" onClick={handleAddItemToBudget}>Adicionar Produto</button>
+             <button type="button" onClick={handleAddItemToBudget}>{editingItemIndex !== null ? 'Atualizar Item' : 'Adicionar Produto'}</button>
           </div>
         )}
       <div className="accessories-section">
@@ -347,7 +376,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
               <p>Detalhes do Acessório:</p>
               <p>Nome: {selectedAccessory.name}</p>
               <p>Preço: R$ {selectedAccessory.price.toFixed(2)}</p>
-              <button type="button" onClick={handleAddItemToBudget}>Adicionar Acessório</button>
+              <button type="button" onClick={handleAddItemToBudget}>{editingItemIndex !== null ? 'Atualizar Item' : 'Adicionar Acessório'}</button>
             </div>
           )}
         </div>
@@ -366,6 +395,8 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                 ) : (
                   `${item.item.name} - Acessório - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
                 )}
+                <button type="button" onClick={() => handleEditItem(index)}>Editar</button>
+                <button type="button" onClick={() => handleRemoveItem(index)}>Remover</button>
               </li>
             ))}
           </ul>
