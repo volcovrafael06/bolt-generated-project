@@ -1,7 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget }) {
+function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget, setBudgets }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredBudgets, setFilteredBudgets] = useState(budgets);
+
+  useEffect(() => {
+    setFilteredBudgets(budgets);
+  }, [budgets]);
+
+  const handleSearch = (event) => {
+    const term = event.target.value;
+    setSearchTerm(term);
+
+    const filtered = budgets.filter(budget =>
+      budget.customerName.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredBudgets(filtered);
+  };
+
+  const handleFinalizeBudget = (id) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === id ? { ...budget, status: 'finalizado' } : budget
+    );
+    setBudgets(updatedBudgets);
+  };
+
+  const handleCancelBudget = (id) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === id ? { ...budget, status: 'cancelado' } : budget
+    );
+    setBudgets(updatedBudgets);
+  };
 
   return (
     <div>
@@ -10,8 +40,16 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
       </Link>
 
       <h2>Orçamentos Existentes</h2>
+
+      <input
+        type="text"
+        placeholder="Pesquisar por cliente"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
+
       <ul>
-        {budgets.map(budget => {
+        {filteredBudgets && filteredBudgets.map(budget => {
           const creationDate = new Date(budget.creationDate);
           const validityDate = new Date(creationDate);
           validityDate.setDate(validityDate.getDate() + parseInt(validadeOrcamento, 10));
@@ -28,11 +66,11 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
               <Link to={`/budgets/${budget.id}/view`}>
                 <button>Ver</button>
               </Link>
-              <Link to={`/budgets/${budget.id}/edit`}> {/* Link to edit route */}
+              <Link to={`/budgets/${budget.id}/edit`}>
                 <button>Editar</button>
               </Link>
-              <button onClick={() => onFinalizeBudget(budget.id)} >Finalizar</button>
-              <button onClick={() => onCancelBudget(budget.id)} >Cancelar</button>
+              <button onClick={() => handleFinalizeBudget(budget.id)}>Finalizar</button>
+              <button onClick={() => handleCancelBudget(budget.id)}>Cancelar</button>
             </li>
           );
         })}
