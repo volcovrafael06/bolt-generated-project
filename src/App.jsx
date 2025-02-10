@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Route, Routes, Link, NavLink } from 'react-router-dom';
+import { Route, Routes, Link, NavLink, useNavigate } from 'react-router-dom';
 import './App.css';
 import BudgetStatusPage from './components/BudgetStatusPage'; // Renamed to BudgetListContainer below
 import Budgets from './components/Budgets';
@@ -40,6 +40,18 @@ function App() {
     ] },
   ]);
 
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const navigate = useNavigate();
+
+  const handleLogin = (user) => {
+    setLoggedInUser(user);
+    navigate("/"); // Redirect to home page after login
+  };
+
+  const handleLogout = () => {
+    setLoggedInUser(null);
+  };
+
 
   return (
       <div className="app">
@@ -51,21 +63,37 @@ function App() {
           )}
           <nav>
             <ul>
-              <li><NavLink to="/" end>Home</NavLink></li>
-              <li><NavLink to="/customers">Clientes</NavLink></li>
-              <li><NavLink to="/products">Produtos</NavLink></li>
-              <li><NavLink to="/accessories">Acessórios</NavLink></li>
-              <li><NavLink to="/budgets">Orçamentos</NavLink></li>
-              <li><NavLink to="/reports">Relatórios</NavLink></li>
-              <li><NavLink to="/configuracoes">Configurações</NavLink></li>
+              {loggedInUser ? (
+                <>
+                  <li><NavLink to="/" end>Home</NavLink></li>
+                  {loggedInUser === 'admin' && (
+                    <>
+                      <li><NavLink to="/customers">Clientes</NavLink></li>
+                      <li><NavLink to="/products">Produtos</NavLink></li>
+                      <li><NavLink to="/accessories">Acessórios</NavLink></li>
+                      <li><NavLink to="/budgets">Orçamentos</NavLink></li>
+                      <li><NavLink to="/reports">Relatórios</NavLink></li>
+                      <li><NavLink to="/configuracoes">Configurações</NavLink></li>
+                    </>
+                  )}
+                  {loggedInUser === 'vendedor' && (
+                    <>
+                      <li><NavLink to="/budgets">Orçamentos</NavLink></li>
+                    </>
+                  )}
+                  <button onClick={handleLogout}>Sair</button>
+                </>
+              ) : (
+                <li><NavLink to="/login">Login</NavLink></li>
+              )}
             </ul>
           </nav>
         </header>
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<HomePage />} /> {/* HomePage for root path */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={loggedInUser ? <HomePage /> : <Login onLogin={handleLogin} />} />
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
             <Route path="/accessories" element={<Accessories accessories={accessories} setAccessories={setAccessories} />} />
