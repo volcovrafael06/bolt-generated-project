@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function Login({ onLogin, companyLogo }) { // Receber companyLogo como prop
+function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -21,11 +21,6 @@ function Login({ onLogin, companyLogo }) { // Receber companyLogo como prop
   return (
     <div>
       <h2>Login</h2>
-       {companyLogo ? (
-          <img src={URL.createObjectURL(companyLogo)} alt="Logo da Empresa" style={{ maxHeight: '50px' }} />
-        ) : (
-          <h3>PersiFIX</h3>
-        )}
       <div className="form-group">
         <label>Usuário</label>
         <input
