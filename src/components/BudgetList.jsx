@@ -1,80 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
-function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget, setBudgets }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredBudgets, setFilteredBudgets] = useState(budgets);
+function BudgetList({ budgets, validadeOrcamento }) {
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const filter = queryParams.get('filter');
 
-  useEffect(() => {
-    setFilteredBudgets(budgets);
-  }, [budgets]);
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
 
-  const handleSearch = (event) => {
-    const term = event.target.value;
-    setSearchTerm(term);
-
-    const filtered = budgets.filter(budget =>
-      budget.customerName.toLowerCase().includes(term.toLowerCase())
-    );
-    setFilteredBudgets(filtered);
-  };
-
-  const handleFinalizeBudget = (id) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === id ? { ...budget, status: 'finalizado' } : budget
-    );
-    setBudgets(updatedBudgets);
-  };
-
-  const handleCancelBudget = (id) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === id ? { ...budget, status: 'cancelado' } : budget
-    );
-    setBudgets(updatedBudgets);
-  };
+  const filteredBudgets = budgets.filter(budget => {
+    if (filter === 'monthly') {
+      const budgetDate = new Date(budget.creationDate);
+      return budgetDate.getMonth() === currentMonth && budgetDate.getFullYear() === currentYear;
+    } else if (filter === 'finalized') {
+      return budget.status === 'finalizado';
+    }
+    return true;
+  });
 
   return (
     <div>
-      <Link to="/budgets/new">
-        <button>Novo Orçamento</button>
-      </Link>
-
-      <h2>Orçamentos Existentes</h2>
-
-      <input
-        type="text"
-        placeholder="Pesquisar por cliente"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
-
-      <ul>
-        {filteredBudgets && filteredBudgets.map(budget => {
-          const creationDate = new Date(budget.creationDate);
-          const validityDate = new Date(creationDate);
-          validityDate.setDate(validityDate.getDate() + parseInt(validadeOrcamento, 10));
-          const formattedCreationDate = creationDate.toLocaleDateString();
-          const formattedValidityDate = validityDate.toLocaleDateString();
-          const isExpired = new Date() > validityDate;
-          const status = isExpired ? 'Cancelado' : budget.status;
-
-          return (
-            <li key={budget.id}>
-              {budget.customerName} - Status: {status} - Total: R$ {budget.totalValue.toFixed(2)}
-              <br />
-              Criado em: {formattedCreationDate} - Valido até: {formattedValidityDate}
-              <Link to={`/budgets/${budget.id}/view`}>
-                <button>Ver</button>
-              </Link>
-              <Link to={`/budgets/${budget.id}/edit`}>
-                <button>Editar</button>
-              </Link>
-              <button onClick={() => handleFinalizeBudget(budget.id)}>Finalizar</button>
-              <button onClick={() => handleCancelBudget(budget.id)}>Cancelar</button>
-            </li>
-          );
-        })}
-      </ul>
+      <h2>Lista de Orçamentos</h2>
+      {filteredBudgets.length > 0 ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Valor Total</th>
+              <th>Data de Criação</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredBudgets.map(budget => (
+              <tr key={budget.id}>
+                <td>{budget.customerName}</td>
+                <td>{budget.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>{new Date(budget.creationDate).toLocaleDateString()}</td>
+                <td>{budget.status}</td>
+                <td>
+                  <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
+                  <Link to={`/budgets/${budget.id}/edit`}>Editar</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>Nenhum orçamento encontrado.</p>
+      )}
+      <Link to="/budgets/new">Novo Orçamento</Link>
     </div>
   );
 }

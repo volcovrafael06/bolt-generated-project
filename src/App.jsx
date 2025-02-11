@@ -12,6 +12,7 @@ import Configuracoes from './components/Configuracoes';
 import BudgetList from './components/BudgetList';
 import BudgetDetailsPage from './components/BudgetDetailsPage';
 import HomePage from './components/HomePage'; // Import HomePage
+import Dashboard from './components/Dashboard';
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -42,6 +43,7 @@ function App() {
 
   const [loggedInUser, setLoggedInUser] = useState(null);
   const navigate = useNavigate();
+  const [visits, setVisits] = useState([]);
 
   const handleLogin = (user) => {
     setLoggedInUser(user);
@@ -92,7 +94,7 @@ function App() {
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={loggedInUser ? <HomePage /> : <Login onLogin={handleLogin} />} />
+            <Route path="/" element={loggedInUser ? <HomePage budgets={budgets} customers={customers} visits={visits} /> : <Login onLogin={handleLogin} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
