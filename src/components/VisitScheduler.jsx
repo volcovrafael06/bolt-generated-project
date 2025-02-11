@@ -14,7 +14,7 @@ function VisitScheduler() {
     dateTime: '',
     notes: '',
   });
-  const [editingVisitId, setEditingVisitId] = useState(null); // State to track editing visit
+  const [editingVisitId, setEditingVisitId] = useState(null);
 
   const handleInputChange = (e) => {
     setNewVisit({ ...newVisit, [e.target.name]: e.target.value });
@@ -57,45 +57,79 @@ function VisitScheduler() {
 
   const handleScheduleVisit = (e) => {
     e.preventDefault();
-    if (newVisit.customerName && newVisit.dateTime && newVisit.cep && newVisit.address && newVisit.number && newVisit.city && newVisit.state) {
+    if (
+      newVisit.customerName &&
+      newVisit.dateTime &&
+      newVisit.cep &&
+      newVisit.address &&
+      newVisit.number &&
+      newVisit.city &&
+      newVisit.state
+    ) {
+      const visitData = {
+        ...newVisit,
+        dateTime: new Date(newVisit.dateTime).toLocaleString(), // Format the date
+      };
       if (editingVisitId) {
-        // Update existing visit
-        const updatedVisits = visits.map(visit =>
-          visit.id === editingVisitId ? { ...newVisit, id: editingVisitId } : visit
+        const updatedVisits = visits.map((visit) =>
+          visit.id === editingVisitId ? { ...visitData, id: editingVisitId } : visit
         );
         setVisits(updatedVisits);
         alert(`Visita de ${newVisit.customerName} reagendada com sucesso!`);
       } else {
-        // Create new visit
-        setVisits([...visits, { ...newVisit, id: Date.now() }]);
+        setVisits([...visits, { ...visitData, id: Date.now() }]);
         alert(`Visita para ${newVisit.customerName} agendada com sucesso!`);
       }
-      setNewVisit({ customerName: '', cep: '', address: '', number: '', complement: '', neighborhood: '', city: '', state: '', dateTime: '', notes: '' }); // Clear form
-      setEditingVisitId(null); // Clear editing ID
+      setNewVisit({
+        customerName: '',
+        cep: '',
+        address: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        dateTime: '',
+        notes: '',
+      });
+      setEditingVisitId(null);
     } else {
-      alert('Por favor, preencha todos os campos obrigatórios, incluindo o número do endereço.');
+      alert(
+        'Por favor, preencha todos os campos obrigatórios, incluindo o número do endereço.'
+      );
     }
   };
 
   const handleEditVisit = (visitId) => {
-    const visitToEdit = visits.find(visit => visit.id === visitId);
+    const visitToEdit = visits.find((visit) => visit.id === visitId);
     if (visitToEdit) {
-      setNewVisit(visitToEdit);
+      setNewVisit({
+        ...visitToEdit,
+        dateTime: new Date(visitToEdit.dateTime).toISOString().slice(0, 16),
+      });
       setEditingVisitId(visitId);
     }
   };
 
   const handleCancelEdit = () => {
-    setNewVisit({ customerName: '', cep: '', address: '', number: '', complement: '', neighborhood: '', city: '', state: '', dateTime: '', notes: '' }); // Clear form
-    setEditingVisitId(null); // Clear editing ID
+    setNewVisit({
+      customerName: '',
+      cep: '',
+      address: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      dateTime: '',
+      notes: '',
+    });
+    setEditingVisitId(null);
   };
-
 
   const handleConfirmVisit = (visitId) => {
     alert(`Funcionalidade de confirmar visita ${visitId} será implementada.`);
-    // Implementar a lógica de confirmação aqui
   };
-
 
   return (
     <div>
@@ -123,7 +157,7 @@ function VisitScheduler() {
             onChange={handleCepChange}
             placeholder="CEP"
             maxLength="9"
-            />
+          />
         </div>
         <div className="form-group">
           <label htmlFor="address">Rua:</label>
@@ -147,7 +181,7 @@ function VisitScheduler() {
             value={newVisit.number}
             onChange={handleInputChange}
             placeholder="Número"
-            required // Campo Número é agora obrigatório
+            required
           />
         </div>
         <div className="form-group">
@@ -230,15 +264,24 @@ function VisitScheduler() {
       <h4>Visitas Agendadas</h4>
       {visits.length > 0 ? (
         <ul>
-          {visits.map(visit => (
-            <li key={visit.id}  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {visits.map((visit) => (
+            <li
+              key={visit.id}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <div>
-                <strong>{visit.customerName}</strong> - {new Date(visit.dateTime).toLocaleString()} - CEP: {visit.cep} - Endereço: {visit.address}, {visit.number}, {visit.complement ? `Complemento: ${visit.complement}, ` : ''} {visit.neighborhood}, {visit.city}, {visit.state}
+                <strong>{visit.customerName}</strong> - {visit.dateTime} - CEP: {visit.cep} -
+                Endereço: {visit.address}, {visit.number}, {visit.complement ? `Complemento: ${visit.complement}, ` : ''}{' '}
+                {visit.neighborhood}, {visit.city}, {visit.state}
                 {visit.notes && <p>Notas: {visit.notes}</p>}
               </div>
               <div>
-                <button style={{marginLeft: '5px'}} onClick={() => handleEditVisit(visit.id)}>Editar</button>
-                <button style={{marginLeft: '5px'}} onClick={() => handleConfirmVisit(visit.id)}>Confirmar Visita</button>
+                <button style={{ marginLeft: '5px' }} onClick={() => handleEditVisit(visit.id)}>
+                  Editar
+                </button>
+                <button style={{ marginLeft: '5px' }} onClick={() => handleConfirmVisit(visit.id)}>
+                  Confirmar Visita
+                </button>
               </div>
             </li>
           ))}

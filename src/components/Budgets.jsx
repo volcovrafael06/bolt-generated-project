@@ -22,10 +22,19 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [isBudgetFinalized, setIsBudgetFinalized] = useState(false);
   const [finalizedBudget, setFinalizedBudget] = useState(null);
   const [editingItemIndex, setEditingItemIndex] = useState(null);
+  const [formulaM2, setFormulaM2] = useState('');
+
+  useEffect(() => {
+    const storedConfig = localStorage.getItem('configuracoes');
+    if (storedConfig) {
+      const config = JSON.parse(storedConfig);
+      setFormulaM2(config.formulaM2 || '');
+    }
+  }, []);
 
   useEffect(() => {
     if (budgetId) {
-      const budgetToEdit = budgets.find(budget => budget.id === parseInt(budgetId, 10));
+      const budgetToEdit = budgets?.find(budget => budget.id === parseInt(budgetId, 10));
       if (budgetToEdit) {
         setSelectedClient(customers.find(c => c.name === budgetToEdit.customerName) || null);
         setBudgetItems(budgetToEdit.items);
@@ -89,7 +98,15 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     if (selectedProduct) {
       let calculatedPrice = selectedProduct.salePrice;
       if (selectedProduct.calculationMethod === 'm2') {
-        calculatedPrice = length * height * selectedProduct.salePrice;
+        try {
+          // Use the formula from settings
+          const evalFormula = new Function('length', 'height', 'price', `return ${formulaM2}`);
+          calculatedPrice = evalFormula(length, height, selectedProduct.salePrice);
+        } catch (error) {
+          console.error('Error evaluating formula:', error);
+          alert('Erro na fórmula de cálculo de M2. Verifique as configurações.');
+          return;
+        }
       }
 
       if (typeof calculatedPrice !== 'number') {
@@ -158,7 +175,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     doc.text('Orçamento', 80, 30);
 
     // Budget Number and Date
-    const budgetNumber = budgets.length + 1;
+    const budgetNumber = budgets?.length + 1;
     const creationDate = new Date().toLocaleDateString('pt-BR');
     doc.setFontSize(10);
     doc.text(`Orçamento Nº: ${budgetNumber}`, 150, 15);
@@ -291,7 +308,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
         <select value={selectedClient?.id || ''} onChange={handleClientSelect}>
           <option value="new-customer">+ Novo Cliente</option>
           <option value="">Selecione um Cliente</option>
-          {customers.map(client => (
+          {customers?.map(client => (
             <option key={client.id} value={client.id}>
               {client.name}
             </option>
@@ -330,7 +347,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
         <h2>Produto</h2>
         <select value={selectedProduct?.id || ''} onChange={handleProductSelect}>
           <option value="">Selecione um Produto</option>
-          {products.map(product => (
+          {products?.map(product => (
             <option key={product.id} value={product.id}>
               {product.name} - {product.model} - {product.material} - {product.code}
             </option>
@@ -359,7 +376,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
           <h2>Acessórios</h2>
           <select value={selectedAccessory?.id || ''} onChange={handleAccessorySelect}>
             <option value="">Selecione um Acessório</option>
-            {accessories.map(accessory => (
+            {accessories?.map(accessory => (
               <option key={accessory.id} value={accessory.id}>
                 {accessory.name} - R$ {accessory.price.toFixed(2)}
               </option>

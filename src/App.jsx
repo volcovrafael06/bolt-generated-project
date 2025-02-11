@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Route, Routes, Link, NavLink, useNavigate } from 'react-router-dom';
 import './App.css';
 import BudgetStatusPage from './components/BudgetStatusPage'; // Renamed to BudgetListContainer below
@@ -94,7 +94,7 @@ function App() {
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={loggedInUser ? <HomePage budgets={budgets} customers={customers} visits={visits} /> : <Login onLogin={handleLogin} />} />
+            <Route path="/" element={loggedInUser ? <HomePage budgets={budgets} customers={customers} visits={visits} setVisits={setVisits} /> : <Login onLogin={handleLogin} />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import VisitScheduler from './VisitScheduler';
+import React from 'react';
 import Dashboard from './Dashboard';
+import VisitScheduler from './VisitScheduler';
 
-function HomePage({ budgets, customers, visits }) {
+function HomePage({ budgets, customers, visits, setVisits }) {
   return (
     <div>
-      <h2>Agendamentos e Visitas para Orçamento</h2>
+      <h1>Bem-vindo!</h1>
       <Dashboard budgets={budgets} customers={customers} visits={visits} />
-      <VisitScheduler />
+      <VisitScheduler visits={visits} setVisits={setVisits} />
     </div>
   );
 }
