@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import './Budgets.css';
 
-function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) {
+function Budgets({ customers = [], products = [], accessories = [], setCustomers, setBudgets, budgets = [] }) {
   const navigate = useNavigate();
-  const { budgetId } = useParams() || {};
-
-  // Local state for the budget being edited
-  const [editingBudget, setEditingBudget] = useState(null);
+  const { budgetId } = useParams();
 
   // Client states
   const [selectedClient, setSelectedClient] = useState(null);
@@ -33,47 +31,38 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [installationPrice, setInstallationPrice] = useState(0);
   const [observation, setObservation] = useState('');
 
-  const formatCpfCnpj = (value) => {
-    const cleanedValue = value.replace(/\D/g, '');
-    const length = cleanedValue.length;
-
-    if (length === 11) {
-      return cleanedValue.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    } else if (length === 14) {
-      return cleanedValue.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    } else {
-      return value;
-    }
-  };
-
   useEffect(() => {
     if (budgetId) {
-      const budgetToEdit = budgets.find(budget => budget.id === parseInt(budgetId, 10));
-      if (budgetToEdit) {
-        setEditingBudget(budgetToEdit);
-        setSelectedClient({ id: budgetToEdit.customerName, name: budgetToEdit.customerName }); // Assuming customerName is the ID
-        setAddedProducts(budgetToEdit.items.filter(item => item.type === 'product'));
-        setAddedAccessories(budgetToEdit.items.filter(item => item.type === 'accessory'));
-        setObservation(budgetToEdit.observation || '');
+      const budget = budgets.find(b => b.id === parseInt(budgetId, 10));
+      if (budget) {
+        const client = customers.find(c => c.name === budget.customerName);
+        setSelectedClient(client || null);
+        setAddedProducts(budget.items?.filter(item => item.type === 'product') || []);
+        setAddedAccessories(budget.items?.filter(item => item.type === 'accessory') || []);
+        setObservation(budget.observation || '');
       }
     }
-  }, [budgetId, budgets]);
+  }, [budgetId, budgets, customers]);
 
-  // Client handlers
   const handleClientSelect = (e) => {
-    if (e.target.value === 'new') {
+    const value = e.target.value;
+    if (value === 'new') {
       setShowNewCustomerForm(true);
       setSelectedClient(null);
     } else {
       setShowNewCustomerForm(false);
-      const client = customers.find(c => c.id === parseInt(e.target.value));
-      setSelectedClient(client);
+      const client = customers.find(c => c.id === parseInt(value, 10));
+      setSelectedClient(client || null);
     }
   };
 
   const handleNewCustomerSubmit = (e) => {
     e.preventDefault();
-    const newId = customers.length + 1;
+    if (!newCustomer.name.trim()) {
+      alert('Nome do cliente é obrigatório');
+      return;
+    }
+    const newId = customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1;
     const customerToAdd = { ...newCustomer, id: newId };
     setCustomers([...customers, customerToAdd]);
     setSelectedClient(customerToAdd);
@@ -81,42 +70,41 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     setNewCustomer({ cpfCnpj: '', name: '', address: '', phone: '' });
   };
 
-  const handleNewCustomerCpfCnpjChange = (e) => {
-    let value = e.target.value;
-    value = formatCpfCnpj(value);
-    setNewCustomer({ ...newCustomer, cpfCnpj: value });
-  };
-
-  // Product handlers
   const handleProductSelect = (e) => {
-    const product = products.find(p => p.id === parseInt(e.target.value));
-    setSelectedProduct(product);
+    const product = products.find(p => p.id === parseInt(e.target.value, 10));
+    setSelectedProduct(product || null);
     setLength('');
     setHeight('');
   };
 
   const handleAddProduct = () => {
-    if (!selectedProduct || !length) {
-      alert('Selecione um produto e informe a largura');
+    if (!selectedProduct) {
+      alert('Selecione um produto');
+      return;
+    }
+    if (!length || isNaN(parseFloat(length))) {
+      alert('Informe uma largura válida');
       return;
     }
 
-    const isWaveModel = selectedProduct && selectedProduct.model ? selectedProduct.model.toLowerCase() === 'wave' : false;
-    if (!isWaveModel && !height) {
-      alert('Informe a altura do produto');
+    const isWaveModel = selectedProduct.model?.toLowerCase() === 'wave';
+    if (!isWaveModel && (!height || isNaN(parseFloat(height)))) {
+      alert('Informe uma altura válida');
       return;
     }
 
-    const price = isWaveModel 
-      ? selectedProduct.salePrice * length
-      : selectedProduct.salePrice * length * height;
+    const productPrice = selectedProduct.salePrice || 0;
+    const calculatedPrice = isWaveModel
+      ? productPrice * parseFloat(length)
+      : productPrice * parseFloat(length) * parseFloat(height);
 
     const productToAdd = {
-      ...selectedProduct,
+      type: 'product',
+      item: selectedProduct,
       length: parseFloat(length),
       height: isWaveModel ? null : parseFloat(height),
-      price,
-      hasBando: false, // Initialize bando to false for each product
+      price: calculatedPrice,
+      hasBando: false
     };
 
     if (editingProductId !== null) {
@@ -134,57 +122,48 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     updateInstallationPrice([...addedProducts, productToAdd]);
   };
 
-  const handleEditProduct = (index) => {
-    setEditingProductId(index);
-    const productToEdit = addedProducts[index];
-    setSelectedProduct(productToEdit);
-    setLength(productToEdit.length);
-    setHeight(productToEdit.height);
-  };
-
-  const handleRemoveProduct = (index) => {
-    const updatedProducts = [...addedProducts];
-    updatedProducts.splice(index, 1);
-    setAddedProducts(updatedProducts);
-  };
-
-  const handleBandoChange = (index) => {
-    const updatedProducts = [...addedProducts];
-    updatedProducts[index].hasBando = !updatedProducts[index].hasBando;
-    setAddedProducts(updatedProducts);
-  };
-
-  // Installation price calculation
-  const updateInstallationPrice = (products) => {
-    setInstallationPrice(products.length * 150);
-  };
-
-  // Accessory handlers
   const handleAccessorySelect = (e) => {
-    const accessory = accessories.find(a => a.id === parseInt(e.target.value));
-    setSelectedAccessory(accessory);
+    const accessory = accessories.find(a => a.id === parseInt(e.target.value, 10));
+    setSelectedAccessory(accessory || null);
   };
 
   const handleAddAccessory = () => {
     if (!selectedAccessory) return;
-    setAddedAccessories([...addedAccessories, selectedAccessory]);
+    
+    const accessoryToAdd = {
+      type: 'accessory',
+      item: selectedAccessory,
+      price: selectedAccessory.price || 0
+    };
+    
+    setAddedAccessories([...addedAccessories, accessoryToAdd]);
     setSelectedAccessory(null);
   };
 
-  // Calculate total
+  const handleBandoChange = (index) => {
+    const updatedProducts = [...addedProducts];
+    const product = updatedProducts[index];
+    if (!product) return;
+
+    product.hasBando = !product.hasBando;
+    const bandoPrice = (product.length || 0) * 120;
+    product.price = product.hasBando
+      ? (product.price || 0) + bandoPrice
+      : (product.price || 0) - bandoPrice;
+    
+    setAddedProducts(updatedProducts);
+  };
+
+  const updateInstallationPrice = (products) => {
+    setInstallationPrice((products?.length || 0) * 150);
+  };
+
   const calculateTotal = () => {
-    let productsTotal = 0;
-    addedProducts.forEach(product => {
-      productsTotal += product.price;
-      if (product.hasBando) {
-        productsTotal += product.length * 120; // Bando price calculation
-      }
-    });
-    const accessoriesTotal = addedAccessories.reduce((sum, a) => sum + a.price, 0);
+    const productsTotal = addedProducts.reduce((sum, p) => sum + (p.price || 0), 0);
+    const accessoriesTotal = addedAccessories.reduce((sum, a) => sum + (a.price || 0), 0);
     return productsTotal + accessoriesTotal + installationPrice;
   };
 
-  // Finalize budget
   const handleFinalize = () => {
     if (!selectedClient) {
       alert('Selecione um cliente');
@@ -197,7 +176,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     }
 
     const newBudget = {
-      id: budgetId ? parseInt(budgetId, 10) : budgets.length + 1,
+      id: budgetId ? parseInt(budgetId, 10) : (budgets.length + 1),
       customerName: selectedClient.name,
       items: [...addedProducts, ...addedAccessories],
       installationPrice,
@@ -208,15 +187,11 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     };
 
     if (budgetId) {
-      // Update existing budget
-      const updatedBudgets = budgets.map(budget =>
-        budget.id === parseInt(budgetId, 10) ? newBudget : budget
-      );
-      setBudgets(updatedBudgets);
+      setBudgets(budgets.map(b => b.id === parseInt(budgetId, 10) ? newBudget : b));
     } else {
-      // Add new budget
       setBudgets([...budgets, newBudget]);
     }
+
     navigate('/budgets');
   };
 
@@ -225,7 +200,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       {/* Client Section */}
       <section className="section">
         <h2>Cliente</h2>
-        <select onChange={handleClientSelect} value={selectedClient?.id || ''}>
+        <select value={selectedClient?.id || ''} onChange={handleClientSelect}>
           <option value="">Selecione um cliente</option>
           <option value="new">+ Novo Cliente</option>
           {customers.map(customer => (
@@ -239,17 +214,16 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
           <form onSubmit={handleNewCustomerSubmit}>
             <input
               type="text"
-              placeholder="CPF/CNPJ"
-              value={newCustomer.cpfCnpj}
-              onChange={handleNewCustomerCpfCnpjChange}
-              maxLength="18"
-            />
-            <input
-              type="text"
               placeholder="Nome"
               value={newCustomer.name}
               onChange={e => setNewCustomer({...newCustomer, name: e.target.value})}
               required
+            />
+            <input
+              type="text"
+              placeholder="CPF/CNPJ"
+              value={newCustomer.cpfCnpj}
+              onChange={e => setNewCustomer({...newCustomer, cpfCnpj: e.target.value})}
             />
             <input
               type="text"
@@ -275,7 +249,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
           <option value="">Selecione um produto</option>
           {products.map(product => (
             <option key={product.id} value={product.id}>
-              {product.name} - {product.model}
+              {product.name} - {product.model} - {product.material} - {product.code}
             </option>
           ))}
         </select>
@@ -287,16 +261,22 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
               placeholder="Largura"
               value={length}
               onChange={e => setLength(e.target.value)}
+              min="0"
+              step="0.01"
             />
-            {selectedProduct && selectedProduct.model && selectedProduct.model.toLowerCase() !== 'wave' && (
+            {selectedProduct.model?.toLowerCase() !== 'wave' && (
               <input
                 type="number"
                 placeholder="Altura"
                 value={height}
                 onChange={e => setHeight(e.target.value)}
+                min="0"
+                step="0.01"
               />
             )}
-            <button onClick={handleAddProduct}>{editingProductId !== null ? 'Atualizar Produto' : 'Adicionar Produto'}</button>
+            <button onClick={handleAddProduct}>
+              {editingProductId !== null ? 'Atualizar Produto' : 'Adicionar Produto'}
+            </button>
           </div>
         )}
 
@@ -305,30 +285,35 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
             <h3>Produtos Adicionados:</h3>
             <ul>
               {addedProducts.map((product, index) => (
-                <li key={index}>
-                  {product.name} - L: {product.length}
-                  {product.height ? ` x A: ${product.height}` : ''} - 
-                  R$ {product.price.toFixed(2)}
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={product.hasBando}
-                      onChange={() => handleBandoChange(index)}
-                    />
-                    Bando (R$ {(product.length * 120).toFixed(2)})
-                  </label>
-                  <button onClick={() => handleEditProduct(index)}>Editar</button>
+                <li key={index} className="added-product-item">
+                  <div className="product-info">
+                    <strong>Produto:</strong> {product.item?.name}<br />
+                    <strong>Modelo:</strong> {product.item?.model}<br />
+                    <strong>Material:</strong> {product.item?.material}<br />
+                    <strong>Código:</strong> {product.item?.code}<br />
+                    <strong>Dimensões:</strong> L: {product.length}
+                    {product.height ? ` x A: ${product.height}` : ''} m2<br />
+                    <strong>Preço:</strong> {product.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    <div className="product-options">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={product.hasBando}
+                          onChange={() => handleBandoChange(index)}
+                        />
+                        Bando ({(product.length * 120).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                      </label>
+                    </div>
+                  </div>
+                  <div className="product-actions">
+                    <button onClick={() => handleEditProduct(index)}>Editar</button>
+                    <button onClick={() => handleRemoveProduct(index)}>Remover</button>
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </section>
-
-      {/* Installation Section */}
-      <section className="section">
-        <h2>Instalação</h2>
-        <p>Valor da Instalação: R$ {installationPrice.toFixed(2)}</p>
       </section>
 
       {/* Accessories Section */}
@@ -338,7 +323,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
           <option value="">Selecione um acessório</option>
           {accessories.map(accessory => (
             <option key={accessory.id} value={accessory.id}>
-              {accessory.name} - R$ {accessory.price.toFixed(2)}
+              {accessory.name} - {accessory.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </option>
           ))}
         </select>
@@ -352,12 +337,18 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
             <ul>
               {addedAccessories.map((accessory, index) => (
                 <li key={index}>
-                  {accessory.name} - R$ {accessory.price.toFixed(2)}
+                  {accessory.item?.name} - {accessory.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </li>
               ))}
             </ul>
           </div>
         )}
+      </section>
+
+      {/* Installation Section */}
+      <section className="section">
+        <h2>Instalação</h2>
+        <p>Valor da Instalação: {installationPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </section>
 
       {/* Observation Section */}
@@ -372,7 +363,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
 
       {/* Total */}
       <section className="section">
-        <h2>Total do Orçamento: R$ {calculateTotal().toFixed(2)}</h2>
+        <h2>Total do Orçamento: {calculateTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h2>
       </section>
 
       {/* Finalize Button */}

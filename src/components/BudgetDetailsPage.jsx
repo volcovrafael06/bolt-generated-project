@@ -22,16 +22,65 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
   const creationDate = new Date(budget.creationDate);
   const formattedCreationDate = creationDate.toLocaleDateString();
+  
+  const validityDays = parseInt(configuracoes.validadeOrcamento || '30', 10);
+  const validityDate = new Date(creationDate);
+  validityDate.setDate(validityDate.getDate() + validityDays);
+  const formattedValidityDate = validityDate.toLocaleDateString();
 
   const handlePrint = () => {
     window.print();
   };
 
+  const formatCurrency = (value) => {
+    if (typeof value !== 'number') return 'R$ 0,00';
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const getItemDescription = (item) => {
+    if (!item || !item.item) return 'Item não especificado';
+
+    if (item.type === 'product') {
+      const product = item.item;
+      let description = [
+        product.name || 'Produto',
+        product.model || '',
+        product.material || ''
+      ].filter(Boolean).join(' - ');
+
+      if (item.length) {
+        description += ` (${item.length}${item.height ? ` x ${item.height}` : ''} m2)`;
+      }
+      if (item.hasBando) {
+        description += ' + Bando';
+      }
+      return description;
+    } else {
+      return `${item.item.name || 'Acessório'}`;
+    }
+  };
+
+  const getItemQuantity = (item) => {
+    if (!item || !item.item) return '1';
+
+    if (item.type === 'product' && item.item.calculationMethod === 'm2') {
+      return `${item.length || 0}${item.height ? ` x ${item.height}` : ''} m2`;
+    }
+    return '1';
+  };
+
+  const getItemUnitPrice = (item) => {
+    if (!item || !item.item) return 0;
+
+    if (item.type === 'product') {
+      return item.item.salePrice || 0;
+    }
+    return item.item.price || 0;
+  };
+
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
     
-    // Company Logo and Header
-    let x = 10;
     let y = 10;
 
     // Add company info
@@ -45,9 +94,10 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     doc.text(`Tel.: ${configuracoes.telefone || '1533333840'}`, 120, y);
     y += 15;
 
-    // Add budget info
+    // Add dates and budget number
     doc.text(`Data: ${formattedCreationDate}`, 10, y);
-    doc.text(`Orçamento No: ${budget.id}`, 120, y);
+    doc.text(`Validade: ${formattedValidityDate}`, 80, y);
+    doc.text(`Orçamento No: ${budget.id}`, 150, y);
     y += 15;
 
     // Add client info
@@ -58,26 +108,12 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
     // Add items table
     const tableColumn = ["Descrição", "QTD", "Preço Unit.", "Total"];
-    const tableRows = budget.items.map(item => {
-      let description = item.type === 'product' 
-        ? `${item.item?.name || 'N/A'} - ${item.item?.model || 'N/A'}`
-        : `${item.item?.name || 'N/A'} - Acessório`;
-      
-      let quantity = item.type === 'product' 
-        ? (item.item?.calculationMethod === 'm2' ? `${item.length} x ${item.height} m2` : '1')
-        : '1';
-      
-      let unitPrice = item.type === 'product'
-        ? item.item?.salePrice || 0
-        : item.item?.price || 0;
-
-      return [
-        description,
-        quantity,
-        unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-        item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'
-      ];
-    });
+    const tableRows = (budget.items || []).map(item => [
+      getItemDescription(item),
+      getItemQuantity(item),
+      formatCurrency(getItemUnitPrice(item)),
+      formatCurrency(item.price || 0)
+    ]);
 
     doc.autoTable({
       head: [tableColumn],
@@ -88,15 +124,12 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
       headStyles: { fillColor: [200, 200, 200] }
     });
 
-    // Add total
     const finalY = doc.autoTable.previous.finalY;
-    doc.text(`Total: ${budget.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 120, finalY + 10);
+    doc.text(`Total: ${formatCurrency(budget.totalValue)}`, 120, finalY + 10);
 
-    // Add observations
     doc.text('Observações:', 10, finalY + 20);
-    doc.text('Retirada dos produtos em loja', 10, finalY + 27);
+    doc.text(budget.observation || 'Retirada dos produtos em loja', 10, finalY + 27);
 
-    // Save PDF
     doc.save(`orcamento-${budget.id}.pdf`);
   };
 
@@ -111,13 +144,18 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           </div>
           <div className="company-info">
             <p>{configuracoes.nomeFantasia || 'Ultracred'}</p>
-            <p>CNPJ: {configuracoes.cnpj ? configuracoes.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : '13.601.392/0001-96'}</p>
+            <p>CNPJ: {configuracoes.cnpj || '13.601.392/0001-96'}</p>
             <p>{configuracoes.endereco || 'av paulista'}</p>
             <p>Tel.: {configuracoes.telefone || '1533333840'}</p>
           </div>
         </div>
 
         <div className="budget-content">
+          <div className="dates-section">
+            <p>Data do Orçamento: {formattedCreationDate}</p>
+            <p>Válido até: {formattedValidityDate}</p>
+          </div>
+
           <section className="client-section">
             <h3>Cliente</h3>
             <p>Nome: {budget.customerName}</p>
@@ -138,18 +176,10 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
                 <tbody>
                   {budget.items.map((item, index) => (
                     <tr key={index}>
-                      <td>
-                        {item.type === 'product' ? (
-                          `${item.item?.name || 'N/A'} - ${item.item?.model || 'N/A'}`
-                        ) : (
-                          `${item.item?.name || 'N/A'} - Acessório`
-                        )}
-                      </td>
-                      <td>
-                        {item.type === 'product' ? (item.item?.calculationMethod === 'm2' ? `${item.length} x ${item.height} m2` : '1') : '1'}
-                      </td>
-                      <td>{item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}</td>
-                      <td>{item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}</td>
+                      <td>{getItemDescription(item)}</td>
+                      <td>{getItemQuantity(item)}</td>
+                      <td>{formatCurrency(getItemUnitPrice(item))}</td>
+                      <td>{formatCurrency(item.price)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -160,12 +190,12 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           </section>
 
           <section className="totals-section">
-            <p>Total: R$ {budget.totalValue.toFixed(2)}</p>
+            <p>Total: {formatCurrency(budget.totalValue)}</p>
           </section>
 
           <section className="observations-section">
             <h3>Observações</h3>
-            <p>Retirada dos produtos em loja</p>
+            <p>{budget.observation || 'Retirada dos produtos em loja'}</p>
           </section>
         </div>
       </div>

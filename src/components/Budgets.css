@@ -1,23 +1,58 @@
-.budget-form {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+/* ... (estilos existentes mantidos) */
+
+.added-product-item {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
 }
 
-.section {
-  margin-bottom: 30px;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+.product-info {
+  margin-bottom: 10px;
 }
 
-.section h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
+.product-info strong {
+  color: #495057;
+  margin-right: 5px;
 }
 
-select, input, textarea {
+.product-options {
+  margin: 10px 0;
+  padding: 10px 0;
+  border-top: 1px dashed #dee2e6;
+}
+
+.product-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.product-actions button {
+  padding: 5px 10px;
+  font-size: 0.9em;
+}
+
+.product-actions button:first-child {
+  background-color: #17a2b8;
+}
+
+.product-actions button:last-child {
+  background-color: #dc3545;
+}
+
+.product-details {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+  align-items: center;
+}
+
+.product-details input {
+  width: 120px;
+}
+
+select {
   width: 100%;
   padding: 8px;
   margin-bottom: 10px;
@@ -25,48 +60,14 @@ select, input, textarea {
   border-radius: 4px;
 }
 
-button {
-  background-color: #007bff;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-.product-details {
+/* Estilo para o checkbox do bando */
+.product-options label {
   display: flex;
-  gap: 10px;
   align-items: center;
-  margin-top: 10px;
+  gap: 5px;
+  cursor: pointer;
 }
 
-.added-products, .added-accessories {
-  margin-top: 20px;
-}
-
-ul {
-  list-style: none;
-  padding: 0;
-}
-
-li {
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.finalize-button {
-  width: 100%;
-  padding: 15px;
-  font-size: 1.1em;
-  background-color: #28a745;
-}
-
-.finalize-button:hover {
-  background-color: #218838;
+.product-options input[type="checkbox"] {
+  margin: 0;
 }
