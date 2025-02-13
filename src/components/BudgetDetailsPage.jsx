@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './BudgetDetailsPage.css';
 
-function BudgetDetailsPage({ budgets, companyLogo }) {
+function BudgetDetailsPage({ budgets = [], companyLogo }) {
   const { budgetId } = useParams();
   const budget = budgets.find(budget => budget.id === parseInt(budgetId, 10));
   const [configuracoes, setConfiguracoes] = useState({});
@@ -16,24 +16,8 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     }
   }, []);
 
-  if (!budget) {
-    return <p>Orçamento não encontrado.</p>;
-  }
-
-  const creationDate = new Date(budget.creationDate);
-  const formattedCreationDate = creationDate.toLocaleDateString();
-  
-  const validityDays = parseInt(configuracoes.validadeOrcamento || '30', 10);
-  const validityDate = new Date(creationDate);
-  validityDate.setDate(validityDate.getDate() + validityDays);
-  const formattedValidityDate = validityDate.toLocaleDateString();
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const formatCurrency = (value) => {
-    if (typeof value !== 'number') return 'R$ 0,00';
+    if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
@@ -61,10 +45,13 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
   };
 
   const getItemQuantity = (item) => {
-    if (!item || !item.item) return '1';
+    if (!item) return '1';
 
-    if (item.type === 'product' && item.item.calculationMethod === 'm2') {
-      return `${item.length || 0}${item.height ? ` x ${item.height}` : ''} m2`;
+    if (item.type === 'product') {
+      if (item.length) {
+        return `${item.length}${item.height ? ` x ${item.height}` : ''} m2`;
+      }
+      return '1';
     }
     return '1';
   };
@@ -73,9 +60,36 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     if (!item || !item.item) return 0;
 
     if (item.type === 'product') {
-      return item.item.salePrice || 0;
+      const product = item.item;
+      if (!product.salePrice) return 0;
+
+      // For products with m2 calculation
+      if (item.length && item.height) {
+        return product.salePrice;
+      }
+      // For products with linear calculation (like Wave)
+      if (item.length && !item.height) {
+        return product.salePrice;
+      }
+      return product.salePrice;
     }
     return item.item.price || 0;
+  };
+
+  if (!budget) {
+    return <p>Orçamento não encontrado.</p>;
+  }
+
+  const creationDate = new Date(budget.creationDate);
+  const formattedCreationDate = creationDate.toLocaleDateString();
+  
+  const validityDays = parseInt(configuracoes.validadeOrcamento || '30', 10);
+  const validityDate = new Date(creationDate);
+  validityDate.setDate(validityDate.getDate() + validityDays);
+  const formattedValidityDate = validityDate.toLocaleDateString();
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const handleDownloadPDF = () => {
@@ -85,13 +99,13 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
     // Add company info
     doc.setFontSize(12);
-    doc.text(configuracoes.nomeFantasia || 'Ultracred', 120, y);
+    doc.text(configuracoes.nomeFantasia || 'Empresa', 120, y);
     y += 7;
-    doc.text(`CNPJ: ${configuracoes.cnpj || '13.601.392/0001-96'}`, 120, y);
+    doc.text(`CNPJ: ${configuracoes.cnpj || ''}`, 120, y);
     y += 7;
-    doc.text(configuracoes.endereco || 'av paulista', 120, y);
+    doc.text(configuracoes.endereco || '', 120, y);
     y += 7;
-    doc.text(`Tel.: ${configuracoes.telefone || '1533333840'}`, 120, y);
+    doc.text(`Tel.: ${configuracoes.telefone || ''}`, 120, y);
     y += 15;
 
     // Add dates and budget number
@@ -107,7 +121,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     y += 15;
 
     // Add items table
-    const tableColumn = ["Descrição", "QTD", "Preço Unit.", "Total"];
+    const tableColumn = ["Descrição", "QTD", "Preço M2", "Total"];
     const tableRows = (budget.items || []).map(item => [
       getItemDescription(item),
       getItemQuantity(item),
@@ -125,7 +139,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     });
 
     const finalY = doc.autoTable.previous.finalY;
-    doc.text(`Total: ${formatCurrency(budget.totalValue)}`, 120, finalY + 10);
+    doc.text(`Total: ${formatCurrency(budget.totalValue || 0)}`, 120, finalY + 10);
 
     doc.text('Observações:', 10, finalY + 20);
     doc.text(budget.observation || 'Retirada dos produtos em loja', 10, finalY + 27);
@@ -143,10 +157,10 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
             )}
           </div>
           <div className="company-info">
-            <p>{configuracoes.nomeFantasia || 'Ultracred'}</p>
-            <p>CNPJ: {configuracoes.cnpj || '13.601.392/0001-96'}</p>
-            <p>{configuracoes.endereco || 'av paulista'}</p>
-            <p>Tel.: {configuracoes.telefone || '1533333840'}</p>
+            <p>{configuracoes.nomeFantasia || 'Empresa'}</p>
+            <p>CNPJ: {configuracoes.cnpj || ''}</p>
+            <p>{configuracoes.endereco || ''}</p>
+            <p>Tel.: {configuracoes.telefone || ''}</p>
           </div>
         </div>
 
@@ -169,7 +183,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
                   <tr>
                     <th>Descrição</th>
                     <th>QTD</th>
-                    <th>Preço Unit.</th>
+                    <th>Preço M2</th>
                     <th>Total</th>
                   </tr>
                 </thead>
@@ -179,7 +193,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
                       <td>{getItemDescription(item)}</td>
                       <td>{getItemQuantity(item)}</td>
                       <td>{formatCurrency(getItemUnitPrice(item))}</td>
-                      <td>{formatCurrency(item.price)}</td>
+                      <td>{formatCurrency(item.price || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,7 +204,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           </section>
 
           <section className="totals-section">
-            <p>Total: {formatCurrency(budget.totalValue)}</p>
+            <p>Total: {formatCurrency(budget.totalValue || 0)}</p>
           </section>
 
           <section className="observations-section">
