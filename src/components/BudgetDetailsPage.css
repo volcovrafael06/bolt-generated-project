@@ -12,12 +12,23 @@
   margin-bottom: 20px;
 }
 
+.company-info {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .company-logo {
   max-width: 100px;
   max-height: 80px;
+  margin-right: 10px;
 }
 
-.company-info,
+.company-text {
+  display: flex;
+  flex-direction: column;
+}
+
 .budget-info {
   text-align: right;
 }
@@ -48,33 +59,17 @@
 }
 
 @media print {
+  body * {
+    visibility: hidden;
+  }
+  .budget-details-container * {
+    visibility: visible;
+  }
   .budget-details-container {
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
+    position: absolute;
+    left: 0;
+    top: 0;
   }
-
-  .budget-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: flex-start !important;
-  }
-
-  .company-info,
-  .budget-info {
-    text-align: right !important;
-  }
-
-  .client-section,
-  .items-section,
-  .totals-section,
-  .observations-section {
-    border: 1px solid #ddd !important;
-    margin-bottom: 10px !important;
-    padding: 5px !important;
-  }
-
   button {
     display: none !important;
   }
