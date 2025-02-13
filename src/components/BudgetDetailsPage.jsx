@@ -53,7 +53,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
             .then(blob => {
               const imgData = URL.createObjectURL(blob);
               doc.addImage(imgData, 'JPEG', x, y, 50, 15);
-              doc.save(`budget-${budgetNumber}.pdf`); // Save here after image is loaded
+              doc.save(`budget-${budgetId}.pdf`); // Save here after image is loaded
             })
             .catch(error => {
               console.error("Error fetching image:", error);
@@ -151,10 +151,7 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     doc.setFontSize(10);
     doc.text('Retirada dos produtos em loja', 10, finalY + 40);
 
-    // Only save the PDF after the image has loaded (if it's a URL)
-    if (typeof companyLogo !== 'string' || (!companyLogo.startsWith('http://') && !companyLogo.startsWith('https://'))){
-      doc.save(`budget-${budgetNumber}.pdf`);
-    }
+    doc.save(`budget-${budgetId}.pdf`);
   };
 
   return (
