@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Configuracoes.css';
 
-function Configuracoes() {
+function Configuracoes({ setCompanyLogo }) {
   const [cnpj, setCnpj] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
   const [nomeFantasia, setNomeFantasia] = useState('');
@@ -21,6 +21,7 @@ function Configuracoes() {
   const [newSellerEmail, setNewSellerEmail] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
   const [cnpjErrorMessage, setCnpjErrorMessage] = useState('');
+  const [localCompanyLogo, setLocalCompanyLogo] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('sellers', JSON.stringify(sellers));
@@ -40,8 +41,10 @@ function Configuracoes() {
       setFormulaComprimento(config.formulaComprimento || '');
       setFormulaBando(config.formulaBando || '');
       setFormulaInstalacao(config.formulaInstalacao || '');
+      setLocalCompanyLogo(config.companyLogo || null);
+      setCompanyLogo(config.companyLogo || null);
     }
-  }, []);
+  }, [setCompanyLogo]);
 
   const handleCNPJChange = async (e) => {
     const value = e.target.value;
@@ -104,6 +107,19 @@ function Configuracoes() {
     }
   };
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setLocalCompanyLogo(base64String);
+        setCompanyLogo(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     const config = {
@@ -117,6 +133,7 @@ function Configuracoes() {
       formulaComprimento,
       formulaBando,
       formulaInstalacao,
+      companyLogo: localCompanyLogo,
     };
     localStorage.setItem('configuracoes', JSON.stringify(config));
     setSaveMessage('Configurações salvas com sucesso!');
@@ -189,7 +206,7 @@ function Configuracoes() {
         </div>
         <div className="form-group">
           <label htmlFor="logo">Anexar Logo da Empresa (Max 200KB):</label>
-          <input type="file" id="logo" />
+          <input type="file" id="logo" onChange={handleLogoChange} />
         </div>
         <div className="form-group">
           <label htmlFor="validadeOrcamento">Validade do Orçamento (dias):</label>
@@ -271,6 +288,12 @@ function Configuracoes() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+        {localCompanyLogo && (
+        <div>
+          <h3>Logo Preview:</h3>
+          <img src={localCompanyLogo} alt="Company Logo Preview" style={{maxWidth: '200px'}}/>
         </div>
       )}
     </div>

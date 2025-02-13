@@ -76,7 +76,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           {companyLogo ? (
-            <img src={URL.createObjectURL(companyLogo)} alt="Company Logo" style={{ maxHeight: '50px' }} />
+            <img src={companyLogo} alt="Company Logo" style={{ maxHeight: '50px' }} />
           ) : (
             <h1>PersiFIX</h1>
           )}
@@ -118,7 +118,7 @@ function App() {
             <Route path="/accessories" element={<Accessories accessories={accessories} setAccessories={setAccessories} />} />
             <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} onFinalizeBudget={handleFinalizeBudget} onCancelBudget={handleCancelBudget} />} /> {/* BudgetList for /budgets path */}
             <Route path="/budgets/new" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
-            <Route path="/budgets/:budgetId/view" element={<BudgetDetailsPage budgets={budgets} />} />
+            <Route path="/budgets/:budgetId/view" element={<BudgetDetailsPage budgets={budgets} companyLogo={companyLogo} />} />
             <Route path="/budgets/:budgetId/edit" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/configuracoes" element={<Configuracoes setCompanyLogo={setCompanyLogo} setValidadeOrcamento={setValidadeOrcamento} validadeOrcamento={validadeOrcamento} />} />
