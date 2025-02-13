@@ -25,8 +25,6 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [addedAccessories, setAddedAccessories] = useState([]);
 
   // Other states
-  const [hasBando, setHasBando] = useState(false);
-  const [bandoPrice, setBandoPrice] = useState(0);
   const [installationPrice, setInstallationPrice] = useState(0);
   const [observation, setObservation] = useState('');
 
@@ -80,7 +78,8 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       ...selectedProduct,
       length: parseFloat(length),
       height: isWaveModel ? null : parseFloat(height),
-      price
+      price,
+      hasBando: false, // Initialize bando to false for each product
     };
 
     setAddedProducts([...addedProducts, productToAdd]);
@@ -90,15 +89,10 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     updateInstallationPrice([...addedProducts, productToAdd]);
   };
 
-  // Bando handlers
-  const handleBandoChange = (e) => {
-    const checked = e.target.checked;
-    setHasBando(checked);
-    if (checked && length) {
-      setBandoPrice(parseFloat(length) * 120);
-    } else {
-      setBandoPrice(0);
-    }
+  const handleBandoChange = (index) => {
+    const updatedProducts = [...addedProducts];
+    updatedProducts[index].hasBando = !updatedProducts[index].hasBando;
+    setAddedProducts(updatedProducts);
   };
 
   // Installation price calculation
@@ -120,9 +114,15 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
 
   // Calculate total
   const calculateTotal = () => {
-    const productsTotal = addedProducts.reduce((sum, p) => sum + p.price, 0);
+    let productsTotal = 0;
+    addedProducts.forEach(product => {
+      productsTotal += product.price;
+      if (product.hasBando) {
+        productsTotal += product.length * 120; // Bando price calculation
+      }
+    });
     const accessoriesTotal = addedAccessories.reduce((sum, a) => sum + a.price, 0);
-    return productsTotal + accessoriesTotal + bandoPrice + installationPrice;
+    return productsTotal + accessoriesTotal + installationPrice;
   };
 
   // Finalize budget
@@ -141,8 +141,6 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       id: budgets.length + 1,
       customerName: selectedClient.name,
       items: [...addedProducts, ...addedAccessories],
-      bando: hasBando,
-      bandoPrice,
       installationPrice,
       observation,
       totalValue: calculateTotal(),
@@ -242,25 +240,19 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                   {product.name} - L: {product.length}
                   {product.height ? ` x A: ${product.height}` : ''} - 
                   R$ {product.price.toFixed(2)}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={product.hasBando}
+                      onChange={() => handleBandoChange(index)}
+                    />
+                    Bando (R$ {(product.length * 120).toFixed(2)})
+                  </label>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </section>
-
-      {/* Bando Section */}
-      <section className="section">
-        <h2>Bando</h2>
-        <label>
-          <input
-            type="checkbox"
-            checked={hasBando}
-            onChange={handleBandoChange}
-          />
-          Adicionar Bando
-        </label>
-        {hasBando && <p>Valor do Bando: R$ {bandoPrice.toFixed(2)}</p>}
       </section>
 
       {/* Installation Section */}
