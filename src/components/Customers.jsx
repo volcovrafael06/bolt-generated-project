@@ -6,8 +6,18 @@ function Customers({ customers, setCustomers }) {
     phone: '',
     email: '',
     address: '',
+    cpf: '',
   })
   const [editingCustomerId, setEditingCustomerId] = useState(null)
+  const [cpfErrorMessage, setCpfErrorMessage] = useState('')
+
+  const formatCpf = (cpf) => {
+    const cleanedCpf = cpf.replace(/\D/g, '');
+    if (cleanedCpf.length !== 11) {
+      return cpf; // Return unformatted if not 11 digits
+    }
+    return cleanedCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -15,6 +25,48 @@ function Customers({ customers, setCustomers }) {
       ...prevState,
       [name]: ['name', 'address', 'email'].includes(name) ? value.toUpperCase() : value // Convert name, address, email to uppercase
     }))
+  }
+
+  const handleCpfChange = async (e) => {
+    let cpf = e.target.value
+    cpf = cpf.replace(/\D/g, '') // Remove non-numeric characters
+    cpf = formatCpf(cpf) // Format the CPF
+    setNewCustomer({ ...newCustomer, cpf })
+
+    if (cpf.length === 14) {
+      try {
+        // Replace with the Receita WS API endpoint
+        const response = await fetch(`https://www.receitaws.com.br/v1/cpf/${cpf.replace(/\D/g, '')}`)
+        const data = await response.json()
+
+        if (data.nome) {
+          setNewCustomer(prevState => ({
+            ...prevState,
+            name: data.nome.toUpperCase() // Fill in the name from the API
+          }))
+          setCpfErrorMessage('')
+        } else {
+          setNewCustomer(prevState => ({
+            ...prevState,
+            name: ''
+          }))
+          setCpfErrorMessage('CPF não encontrado')
+        }
+      } catch (error) {
+        console.error('Erro ao buscar CPF:', error)
+        setNewCustomer(prevState => ({
+          ...prevState,
+          name: ''
+        }))
+        setCpfErrorMessage('Erro ao buscar CPF')
+      }
+    } else {
+      setNewCustomer(prevState => ({
+        ...prevState,
+        name: ''
+      }))
+      setCpfErrorMessage('')
+    }
   }
 
   const handleSubmit = (e) => {
@@ -35,7 +87,7 @@ function Customers({ customers, setCustomers }) {
       updatedCustomers = [...customers, { ...newCustomer, id: nextId }]
     }
      setCustomers(updatedCustomers); // Update customers in App component
-    setNewCustomer({ name: '', phone: '', email: '', address: '' }) // Clear form
+    setNewCustomer({ name: '', phone: '', email: '', address: '', cpf: '' }) // Clear form
   }
 
   const handleEditCustomer = (id) => {
@@ -46,6 +98,7 @@ function Customers({ customers, setCustomers }) {
         phone: customerToEdit.phone,
         email: customerToEdit.email,
         address: customerToEdit.address,
+        cpf: customerToEdit.cpf,
       })
       setEditingCustomerId(id)
     }
@@ -57,7 +110,7 @@ function Customers({ customers, setCustomers }) {
   }
 
   const handleCancelEdit = () => {
-    setNewCustomer({ name: '', phone: '', email: '', address: '' })
+    setNewCustomer({ name: '', phone: '', email: '', address: '', cpf: '' })
     setEditingCustomerId(null)
   }
 
@@ -66,6 +119,18 @@ function Customers({ customers, setCustomers }) {
       <h2>Clientes</h2>
 
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="cpf">CPF:</label>
+          <input
+            type="text"
+            id="cpf"
+            name="cpf"
+            value={newCustomer.cpf}
+            onChange={handleCpfChange}
+            maxLength="14"
+          />
+          {cpfErrorMessage && <p className="error-message">{cpfErrorMessage}</p>}
+        </div>
         <div className="form-group">
           <label htmlFor="name">Nome:</label>
           <input type="text" id="name" name="name" value={newCustomer.name} onChange={handleInputChange} required />
