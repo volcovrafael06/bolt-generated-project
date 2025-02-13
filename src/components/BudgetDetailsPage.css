@@ -1,42 +1,8 @@
 .budget-details-container {
   padding: 20px;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 90%;
   max-width: 800px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 5px;
+  margin: 0 auto;
+  background-color: white;
 }
 
 .budget-print-layout {
@@ -101,53 +67,49 @@
   background-color: #f0f0f0;
 }
 
-.modal-footer {
+.button-container {
+  display: flex;
+  gap: 10px;
   margin-top: 20px;
-  text-align: center;
 }
 
-.print-button,
-.view-button {
+.action-button {
   padding: 10px 20px;
   background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin: 5px;
 }
 
-.print-button:hover,
-.view-button:hover {
+.action-button:hover {
   background-color: #0056b3;
 }
 
 @media print {
-  .modal-overlay {
-    position: static;
-    background: none;
+  body * {
+    visibility: hidden;
   }
-
-  .modal-content {
+  .budget-details-container,
+  .budget-details-container * {
+    visibility: visible;
+  }
+  .budget-details-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
     padding: 0;
-    max-height: none;
   }
-
-  .modal-header,
-  .modal-footer,
-  .close-button {
+  .button-container {
     display: none;
   }
-
-  .budget-print-layout {
-    padding: 0;
-  }
-
+  
   .header-section {
     border-top: 2px solid #ff0000 !important;
     border-bottom: 2px solid #ff0000 !important;
   }
-
+  
   .company-logo {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
