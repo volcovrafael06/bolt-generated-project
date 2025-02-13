@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) {
   const navigate = useNavigate();
-  
+  const { budgetId } = useParams();
+
+  // Local state for the budget being edited
+  const [editingBudget, setEditingBudget] = useState(null);
+
   // Client states
   const [selectedClient, setSelectedClient] = useState(null);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
@@ -19,6 +23,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [length, setLength] = useState('');
   const [height, setHeight] = useState('');
   const [addedProducts, setAddedProducts] = useState([]);
+  const [editingProductId, setEditingProductId] = useState(null);
 
   // Accessory states
   const [selectedAccessory, setSelectedAccessory] = useState(null);
@@ -28,13 +33,18 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [installationPrice, setInstallationPrice] = useState(0);
   const [observation, setObservation] = useState('');
 
-    const formatCpf = (cpf) => {
-    const cleanedCpf = cpf.replace(/\D/g, '');
-    if (cleanedCpf.length !== 11) {
-      return cpf; // Return unformatted if not 11 digits
+  useEffect(() => {
+    if (budgetId) {
+      const budgetToEdit = budgets.find(budget => budget.id === parseInt(budgetId, 10));
+      if (budgetToEdit) {
+        setEditingBudget(budgetToEdit);
+        setSelectedClient({ id: budgetToEdit.customerName, name: budgetToEdit.customerName }); // Assuming customerName is the ID
+        setAddedProducts(budgetToEdit.items.filter(item => item.type === 'product'));
+        setAddedAccessories(budgetToEdit.items.filter(item => item.type === 'accessory'));
+        setObservation(budgetToEdit.observation || '');
+      }
     }
-    return cleanedCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-  };
+  }, [budgetId, budgets]);
 
   // Client handlers
   const handleClientSelect = (e) => {
@@ -58,13 +68,6 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     setNewCustomer({ cpf: '', name: '', address: '', phone: '' });
   };
 
-  const handleNewCustomerCpfChange = (e) => {
-    let cpf = e.target.value;
-    cpf = cpf.replace(/\D/g, '');
-    cpf = formatCpf(cpf);
-    setNewCustomer({ ...newCustomer, cpf });
-  };
-
   // Product handlers
   const handleProductSelect = (e) => {
     const product = products.find(p => p.id === parseInt(e.target.value));
@@ -79,7 +82,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       return;
     }
 
-    const isWaveModel = selectedProduct.model.toLowerCase() === 'wave';
+    const isWaveModel = selectedProduct && selectedProduct.model ? selectedProduct.model.toLowerCase() === 'wave' : false;
     if (!isWaveModel && !height) {
       alert('Informe a altura do produto');
       return;
@@ -97,11 +100,33 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       hasBando: false, // Initialize bando to false for each product
     };
 
-    setAddedProducts([...addedProducts, productToAdd]);
+    if (editingProductId !== null) {
+      const updatedProducts = [...addedProducts];
+      updatedProducts[editingProductId] = productToAdd;
+      setAddedProducts(updatedProducts);
+      setEditingProductId(null);
+    } else {
+      setAddedProducts([...addedProducts, productToAdd]);
+    }
+
     setSelectedProduct(null);
     setLength('');
     setHeight('');
     updateInstallationPrice([...addedProducts, productToAdd]);
+  };
+
+  const handleEditProduct = (index) => {
+    setEditingProductId(index);
+    const productToEdit = addedProducts[index];
+    setSelectedProduct(productToEdit);
+    setLength(productToEdit.length);
+    setHeight(productToEdit.height);
+  };
+
+  const handleRemoveProduct = (index) => {
+    const updatedProducts = [...addedProducts];
+    updatedProducts.splice(index, 1);
+    setAddedProducts(updatedProducts);
   };
 
   const handleBandoChange = (index) => {
@@ -153,7 +178,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     }
 
     const newBudget = {
-      id: budgets.length + 1,
+      id: budgetId ? parseInt(budgetId, 10) : budgets.length + 1,
       customerName: selectedClient.name,
       items: [...addedProducts, ...addedAccessories],
       installationPrice,
@@ -163,7 +188,16 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       creationDate: new Date().toISOString()
     };
 
-    setBudgets([...budgets, newBudget]);
+    if (budgetId) {
+      // Update existing budget
+      const updatedBudgets = budgets.map(budget =>
+        budget.id === parseInt(budgetId, 10) ? newBudget : budget
+      );
+      setBudgets(updatedBudgets);
+    } else {
+      // Add new budget
+      setBudgets([...budgets, newBudget]);
+    }
     navigate('/');
   };
 
@@ -188,8 +222,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
               type="text"
               placeholder="CPF"
               value={newCustomer.cpf}
-              onChange={handleNewCustomerCpfChange}
-              maxLength="14"
+              onChange={e => setNewCustomer({...newCustomer, cpf: e.target.value})}
             />
             <input
               type="text"
@@ -235,7 +268,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
               value={length}
               onChange={e => setLength(e.target.value)}
             />
-            {selectedProduct.model.toLowerCase() !== 'wave' && (
+            {selectedProduct && selectedProduct.model && selectedProduct.model.toLowerCase() !== 'wave' && (
               <input
                 type="number"
                 placeholder="Altura"
@@ -243,7 +276,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                 onChange={e => setHeight(e.target.value)}
               />
             )}
-            <button onClick={handleAddProduct}>Adicionar Produto</button>
+            <button onClick={handleAddProduct}>{editingProductId !== null ? 'Atualizar Produto' : 'Adicionar Produto'}</button>
           </div>
         )}
 
@@ -264,6 +297,8 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                     />
                     Bando (R$ {(product.length * 120).toFixed(2)})
                   </label>
+                  <button onClick={() => handleEditProduct(index)}>Editar</button>
+                  <button onClick={() => handleRemoveProduct(index)}>Remover</button>
                 </li>
               ))}
             </ul>
@@ -323,7 +358,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
 
       {/* Finalize Button */}
       <button className="finalize-button" onClick={handleFinalize}>
-        Concluir Orçamento
+        {budgetId ? 'Atualizar Orçamento' : 'Concluir Orçamento'}
       </button>
     </div>
   );
