@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget }) {
@@ -6,42 +6,26 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
   const queryParams = new URLSearchParams(location.search);
   const filter = queryParams.get('filter');
 
-  const [updatedBudgets, setUpdatedBudgets] = useState(budgets);
-
-  useEffect(() => {
-    const checkAndCancelExpiredBudgets = () => {
-      const today = new Date();
-      const updated = updatedBudgets.map(budget => {
-        const expirationDate = new Date(budget.creationDate);
-        expirationDate.setDate(expirationDate.getDate() + parseInt(validadeOrcamento, 10));
-        if (expirationDate < today && budget.status !== 'finalizado' && budget.status !== 'cancelado') {
-          // Cancel the budget if it's expired and not already finalized or canceled
-          if (onCancelBudget) {
-            onCancelBudget(budget.id);
-          }
-          return { ...budget, status: 'cancelado' };
-        }
-        return budget;
-      });
-      setUpdatedBudgets(updated);
-    };
-
-    checkAndCancelExpiredBudgets();
-  }, [budgets, validadeOrcamento, onCancelBudget]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  const filteredBudgets = updatedBudgets.filter(budget => {
-    if (filter === 'monthly') {
-      const budgetDate = new Date(budget.creationDate);
-      return budgetDate.getMonth() === currentMonth && budgetDate.getFullYear() === currentYear;
-    } else if (filter === 'finalized') {
-      return budget.status === 'finalizado';
-    }
-    return true;
-  });
+  const filteredBudgets = budgets
+    .sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate))
+    .filter(budget => {
+      if (filter === 'monthly') {
+        const budgetDate = new Date(budget.creationDate);
+        return budgetDate.getMonth() === currentMonth && budgetDate.getFullYear() === currentYear;
+      } else if (filter === 'finalized') {
+        return budget.status === 'finalizado';
+      }
+      return true;
+    })
+    .filter(budget =>
+      budget.customerName.toUpperCase().includes(searchTerm.toUpperCase())
+    );
 
   const calculateExpirationDate = (creationDate, validadeOrcamento) => {
     const creation = new Date(creationDate);
@@ -53,6 +37,21 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
   return (
     <div>
       <h2>Lista de Orçamentos</h2>
+
+      <Link to="/budgets/new">Novo Orçamento</Link>
+
+      <div className="form-group">
+        <label htmlFor="search">Buscar por Cliente:</label>
+        <input
+          type="text"
+          id="search"
+          name="search"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Digite o nome do cliente"
+        />
+      </div>
+
       {filteredBudgets.length > 0 ? (
         <table>
           <thead>
@@ -76,7 +75,7 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                 <td>
                   <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
                   <Link to={`/budgets/${budget.id}/edit`}>Editar</Link> |
-                  {budget.status !== 'finalizado' && budget.status !== 'cancelado' && (
+                  {budget.status !== 'finalizado' && (
                     <>
                       <button onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}>Finalizar</button> |
                       <button onClick={() => onCancelBudget && onCancelBudget(budget.id)}>Cancelar</button>
@@ -90,7 +89,6 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
       ) : (
         <p>Nenhum orçamento encontrado.</p>
       )}
-      <Link to="/budgets/new">Novo Orçamento</Link>
     </div>
   );
 }

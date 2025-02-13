@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 function Budgets({ customers, products, accessories, setCustomers, setBudgets, budgets }) {
   const navigate = useNavigate();
-  const { budgetId } = useParams();
+  const { budgetId } = useParams() || {};
 
   // Local state for the budget being edited
   const [editingBudget, setEditingBudget] = useState(null);
@@ -12,7 +12,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [selectedClient, setSelectedClient] = useState(null);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
-    cpf: '',
+    cpfCnpj: '',
     name: '',
     address: '',
     phone: '',
@@ -32,6 +32,19 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   // Other states
   const [installationPrice, setInstallationPrice] = useState(0);
   const [observation, setObservation] = useState('');
+
+  const formatCpfCnpj = (value) => {
+    const cleanedValue = value.replace(/\D/g, '');
+    const length = cleanedValue.length;
+
+    if (length === 11) {
+      return cleanedValue.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (length === 14) {
+      return cleanedValue.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    } else {
+      return value;
+    }
+  };
 
   useEffect(() => {
     if (budgetId) {
@@ -65,7 +78,13 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     setCustomers([...customers, customerToAdd]);
     setSelectedClient(customerToAdd);
     setShowNewCustomerForm(false);
-    setNewCustomer({ cpf: '', name: '', address: '', phone: '' });
+    setNewCustomer({ cpfCnpj: '', name: '', address: '', phone: '' });
+  };
+
+  const handleNewCustomerCpfCnpjChange = (e) => {
+    let value = e.target.value;
+    value = formatCpfCnpj(value);
+    setNewCustomer({ ...newCustomer, cpfCnpj: value });
   };
 
   // Product handlers
@@ -198,7 +217,7 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
       // Add new budget
       setBudgets([...budgets, newBudget]);
     }
-    navigate('/');
+    navigate('/budgets');
   };
 
   return (
@@ -220,9 +239,10 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
           <form onSubmit={handleNewCustomerSubmit}>
             <input
               type="text"
-              placeholder="CPF"
-              value={newCustomer.cpf}
-              onChange={e => setNewCustomer({...newCustomer, cpf: e.target.value})}
+              placeholder="CPF/CNPJ"
+              value={newCustomer.cpfCnpj}
+              onChange={handleNewCustomerCpfCnpjChange}
+              maxLength="18"
             />
             <input
               type="text"
@@ -298,7 +318,6 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
                     Bando (R$ {(product.length * 120).toFixed(2)})
                   </label>
                   <button onClick={() => handleEditProduct(index)}>Editar</button>
-                  <button onClick={() => handleRemoveProduct(index)}>Remover</button>
                 </li>
               ))}
             </ul>

@@ -10,6 +10,7 @@ function Customers({ customers, setCustomers }) {
   })
   const [editingCustomerId, setEditingCustomerId] = useState(null)
   const [cpfErrorMessage, setCpfErrorMessage] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const formatCpf = (cpf) => {
     const cleanedCpf = cpf.replace(/\D/g, '');
@@ -35,7 +36,7 @@ function Customers({ customers, setCustomers }) {
 
     if (cpf.length === 14) {
       try {
-        // Replace with the Receita WS API endpoint
+        // Replace with your actual API endpoint
         const response = await fetch(`https://www.receitaws.com.br/v1/cpf/${cpf.replace(/\D/g, '')}`)
         const data = await response.json()
 
@@ -114,9 +115,25 @@ function Customers({ customers, setCustomers }) {
     setEditingCustomerId(null)
   }
 
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toUpperCase().includes(searchTerm.toUpperCase())
+  )
+
   return (
     <div>
       <h2>Clientes</h2>
+
+       <div className="form-group">
+          <label htmlFor="search">Buscar por Nome:</label>
+          <input
+            type="text"
+            id="search"
+            name="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Digite o nome do cliente"
+          />
+        </div>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -155,7 +172,7 @@ function Customers({ customers, setCustomers }) {
 
       <h3>Lista de Clientes</h3>
       <ul className="customer-list">
-        {customers.map(customer => (
+        {filteredCustomers.map(customer => (
           <li key={customer.id} className="customer-item">
             <strong>{customer.name}</strong> <br />
             Telefone: {customer.phone} <br />
