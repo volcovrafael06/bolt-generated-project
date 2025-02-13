@@ -125,10 +125,13 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     });
 
     const finalY = doc.autoTable.previous.finalY;
-    doc.text(`Total: ${formatCurrency(budget.totalValue)}`, 120, finalY + 10);
 
-    doc.text('Observações:', 10, finalY + 20);
-    doc.text(budget.observation || 'Retirada dos produtos em loja', 10, finalY + 27);
+    // Add installation price
+    doc.text(`Instalação: ${formatCurrency(budget.installationPrice || 0)}`, 120, finalY + 10);
+    doc.text(`Total: ${formatCurrency(budget.totalValue)}`, 120, finalY + 20);
+
+    doc.text('Observações:', 10, finalY + 30);
+    doc.text(budget.observation || 'Retirada dos produtos em loja', 10, finalY + 37);
 
     doc.save(`orcamento-${budget.id}.pdf`);
   };
@@ -190,7 +193,10 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           </section>
 
           <section className="totals-section">
-            <p>Total: {formatCurrency(budget.totalValue)}</p>
+            <div className="price-breakdown">
+              <p>Instalação: {formatCurrency(budget.installationPrice || 0)}</p>
+              <p>Total: {formatCurrency(budget.totalValue)}</p>
+            </div>
           </section>
 
           <section className="observations-section">

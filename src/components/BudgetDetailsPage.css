@@ -67,6 +67,26 @@
   background-color: #f0f0f0;
 }
 
+.price-breakdown {
+  text-align: right;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+}
+
+.price-breakdown p {
+  margin: 5px 0;
+  font-size: 1.1em;
+}
+
+.price-breakdown p:last-child {
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-top: 10px;
+  border-top: 1px solid #ddd;
+  padding-top: 10px;
+}
+
 .button-container {
   display: flex;
   gap: 10px;
