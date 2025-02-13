@@ -1,21 +1,72 @@
-.budgets-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.budget-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.client-section, .product-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
 }
 
-.client-select {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.section h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
 }
 
-.new-client-form {
+select, input, textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   margin-top: 10px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.product-details {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.added-products, .added-accessories {
+  margin-top: 20px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.finalize-button {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1em;
+  background-color: #28a745;
+}
+
+.finalize-button:hover {
+  background-color: #218838;
 }
