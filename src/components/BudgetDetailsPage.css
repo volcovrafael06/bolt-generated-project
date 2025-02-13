@@ -1,36 +1,79 @@
 .budget-details-container {
-  font-family: Arial, sans-serif;
   padding: 20px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
   max-width: 800px;
-  margin: 0 auto;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
-.budget-header {
+.modal-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.budget-print-layout {
+  padding: 20px;
+}
+
+.header-section {
+  display: flex;
   margin-bottom: 20px;
+  border-top: 2px solid #ff0000;
+  border-bottom: 2px solid #ff0000;
+  padding: 10px 0;
 }
 
-.company-info {
-  display: flex;
-  align-items: flex-start;
-  text-align: left;
+.logo-section {
+  width: 50%;
 }
 
 .company-logo {
-  max-width: 100px;
-  max-height: 80px;
-  margin-right: 10px;
+  max-width: 200px;
+  height: auto;
 }
 
-.company-text {
-  display: flex;
-  flex-direction: column;
+.company-info {
+  width: 50%;
+  text-align: left;
 }
 
-.budget-info {
-  text-align: right;
+.company-info p {
+  margin: 0;
+  padding: 2px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.budget-content {
+  margin-top: 20px;
 }
 
 .client-section,
@@ -58,19 +101,55 @@
   background-color: #f0f0f0;
 }
 
+.modal-footer {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.print-button,
+.view-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 5px;
+}
+
+.print-button:hover,
+.view-button:hover {
+  background-color: #0056b3;
+}
+
 @media print {
-  body * {
-    visibility: hidden;
+  .modal-overlay {
+    position: static;
+    background: none;
   }
-  .budget-details-container * {
-    visibility: visible;
+
+  .modal-content {
+    padding: 0;
+    max-height: none;
   }
-  .budget-details-container {
-    position: absolute;
-    left: 0;
-    top: 0;
+
+  .modal-header,
+  .modal-footer,
+  .close-button {
+    display: none;
   }
-  button {
-    display: none !important;
+
+  .budget-print-layout {
+    padding: 0;
+  }
+
+  .header-section {
+    border-top: 2px solid #ff0000 !important;
+    border-bottom: 2px solid #ff0000 !important;
+  }
+
+  .company-logo {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
