@@ -28,6 +28,14 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
   const [installationPrice, setInstallationPrice] = useState(0);
   const [observation, setObservation] = useState('');
 
+    const formatCpf = (cpf) => {
+    const cleanedCpf = cpf.replace(/\D/g, '');
+    if (cleanedCpf.length !== 11) {
+      return cpf; // Return unformatted if not 11 digits
+    }
+    return cleanedCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
+
   // Client handlers
   const handleClientSelect = (e) => {
     if (e.target.value === 'new') {
@@ -48,6 +56,13 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
     setSelectedClient(customerToAdd);
     setShowNewCustomerForm(false);
     setNewCustomer({ cpf: '', name: '', address: '', phone: '' });
+  };
+
+  const handleNewCustomerCpfChange = (e) => {
+    let cpf = e.target.value;
+    cpf = cpf.replace(/\D/g, '');
+    cpf = formatCpf(cpf);
+    setNewCustomer({ ...newCustomer, cpf });
   };
 
   // Product handlers
@@ -173,7 +188,8 @@ function Budgets({ customers, products, accessories, setCustomers, setBudgets, b
               type="text"
               placeholder="CPF"
               value={newCustomer.cpf}
-              onChange={e => setNewCustomer({...newCustomer, cpf: e.target.value})}
+              onChange={handleNewCustomerCpfChange}
+              maxLength="14"
             />
             <input
               type="text"

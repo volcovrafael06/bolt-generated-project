@@ -54,6 +54,23 @@ function App() {
     setLoggedInUser(null);
   };
 
+  const handleFinalizeBudget = (budgetId) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+    );
+    setBudgets(updatedBudgets);
+    alert(`Orçamento ${budgetId} finalizado.`);
+  };
+
+  // Function to cancel a budget
+  const handleCancelBudget = (budgetId) => {
+    const updatedBudgets = budgets.map(budget =>
+      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
+    );
+    setBudgets(updatedBudgets);
+    alert(`Orçamento ${budgetId} cancelado.`);
+  };
+
 
   return (
       <div className="app">
@@ -99,7 +116,7 @@ function App() {
             <Route path="/customers" element={<Customers customers={customers} setCustomers={setCustomers} />} />
             <Route path="/products" element={<Products products={products} setProducts={setProducts} />} />
             <Route path="/accessories" element={<Accessories accessories={accessories} setAccessories={setAccessories} />} />
-            <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} />} /> {/* BudgetList for /budgets path */}
+            <Route path="/budgets" element={<BudgetList budgets={budgets} validadeOrcamento={validadeOrcamento} onFinalizeBudget={handleFinalizeBudget} onCancelBudget={handleCancelBudget} />} /> {/* BudgetList for /budgets path */}
             <Route path="/budgets/new" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />
             <Route path="/budgets/:budgetId/view" element={<BudgetDetailsPage budgets={budgets} />} />
             <Route path="/budgets/:budgetId/edit" element={<Budgets customers={customers} products={products} accessories={accessories} setCustomers={setCustomers} setBudgets={setBudgets} budgets={budgets} />} />

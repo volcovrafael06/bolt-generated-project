@@ -107,13 +107,13 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
       let unitPrice = 0;
 
       if (budgetItem.type === 'product') {
-        description = `${budgetItem.item.name} - ${budgetItem.item.model}`;
-        quantity = (budgetItem.item.calculationMethod === 'm2') ? `${budgetItem.length} x ${budgetItem.height} m²` : '1';
-        unitPrice = budgetItem.item.salePrice;
+        description = `${budgetItem.item?.name || 'N/A'} - ${budgetItem.item?.model || 'N/A'}`;
+        quantity = (budgetItem.item?.calculationMethod === 'm2') ? `${budgetItem.length} x ${budgetItem.height} m²` : '1';
+        unitPrice = budgetItem.item?.salePrice || 0;
       } else if (budgetItem.type === 'accessory') {
-        description = budgetItem.item.name;
+        description = budgetItem.item?.name || 'N/A';
         quantity = '1';
-        unitPrice = budgetItem.item.price;
+        unitPrice = budgetItem.item?.price || 0;
       }
 
       const rowData = [
@@ -171,9 +171,9 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           {budget.items.map((item, index) => (
             <li key={index}>
               {item.type === 'product' ? (
-                `${item.item.name} - ${item.item.model} - Comprimento: ${item.length} - Altura: ${item.height} - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
+                `${item.item?.name || 'N/A'} - ${item.item?.model || 'N/A'} - Comprimento: ${item.length} - Altura: ${item.height} - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
               ) : (
-                `${item.item.name} - Acessório - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
+                `${item.item?.name || 'N/A'} - Acessório - Preço: ${item.price ? item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}`
               )}
             </li>
           ))}
