@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
+import SelectOrCreate from './SelectOrCreate';
 
 function Accessories({ accessories, setAccessories }) {
   const [newAccessory, setNewAccessory] = useState({
-    product_type: 'cadastral',
-    measurement_mm: 0,
+    produto: null,
+    measurement_mm: null,
     unit: '',
     colors: [],
   });
   const [newColor, setNewColor] = useState({ color: '', price: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [produtos, setProdutos] = useState([]);
+  const [medidas, setMedidas] = useState([]);
 
   useEffect(() => {
     fetchAccessories();
+    fetchProdutos();
+    fetchMedidas();
   }, []);
 
   const fetchAccessories = async () => {
@@ -33,12 +38,40 @@ function Accessories({ accessories, setAccessories }) {
     }
   };
 
+  const fetchProdutos = async () => {
+    try {
+      const { data, error } = await supabase.from('produtos').select('*');
+      if (error) throw error;
+      setProdutos(data || []);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const fetchMedidas = async () => {
+    try {
+      const { data, error } = await supabase.from('medidas').select('*');
+      if (error) throw error;
+      setMedidas(data || []);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAccessory((prev) => ({
       ...prev,
-      [name]: name === 'measurement_mm' ? parseFloat(value) || 0 : value,
+      [name]: value,
     }));
+  };
+
+  const handleProdutoChange = (selectedProduto) => {
+    setNewAccessory((prev) => ({ ...prev, produto: selectedProduto }));
+  };
+
+  const handleMedidaChange = (selectedMedida) => {
+    setNewAccessory((prev) => ({ ...prev, measurement_mm: selectedMedida }));
   };
 
   const handleColorInputChange = (e) => {
@@ -61,8 +94,8 @@ function Accessories({ accessories, setAccessories }) {
   const handleAddAccessory = async (e) => {
     e.preventDefault();
     if (
-      !newAccessory.product_type ||
-      newAccessory.measurement_mm < 0 ||
+      !newAccessory.produto ||
+      !newAccessory.measurement_mm ||
       !newAccessory.unit.trim() ||
       newAccessory.colors.length === 0
     )
@@ -73,15 +106,22 @@ function Accessories({ accessories, setAccessories }) {
     try {
       const { data, error: insertError } = await supabase
         .from('accessories')
-        .insert([newAccessory])
+        .insert([
+          {
+            produto: newAccessory.produto.id,
+            measurement_mm: newAccessory.measurement_mm.id,
+            unit: newAccessory.unit,
+            colors: newAccessory.colors,
+          },
+        ])
         .select();
 
       if (insertError) throw insertError;
 
       setAccessories((prevAccessories) => [...prevAccessories, ...data]);
       setNewAccessory({
-        product_type: 'cadastral',
-        measurement_mm: 0,
+        produto: null,
+        measurement_mm: null,
         unit: '',
         colors: [],
       }); // Clear form
@@ -107,25 +147,53 @@ function Accessories({ accessories, setAccessories }) {
       <h2>Acessórios</h2>
       <form onSubmit={handleAddAccessory}>
         <div className="form-group">
-          <label htmlFor="product_type">Tipo de Produto:</label>
-          <select
-            id="product_type"
-            name="product_type"
-            value={newAccessory.product_type}
-            onChange={handleInputChange}
-          >
-            <option value="cadastral">Cadastral</option>
-            <option value="selectable">Selecionável</option>
-          </select>
+          <label htmlFor="produto">Produto:</label>
+          <SelectOrCreate
+            id="produto"
+            name="produto"
+            options={produtos}
+            labelKey="nome"
+            valueKey="id"
+            onChange={handleProdutoChange}
+            onCreate={async (newProdutoName) => {
+              try {
+                const { data, error } = await supabase
+                  .from('produtos')
+                  .insert([{ nome: newProdutoName }])
+                  .select();
+                if (error) throw error;
+                setProdutos([...produtos, data[0]]);
+                return data[0];
+              } catch (error) {
+                setError(error.message);
+                return null;
+              }
+            }}
+          />
         </div>
         <div className="form-group">
           <label htmlFor="measurement_mm">Medida (MM):</label>
-          <input
-            type="number"
+          <SelectOrCreate
             id="measurement_mm"
             name="measurement_mm"
-            value={newAccessory.measurement_mm}
-            onChange={handleInputChange}
+            options={medidas}
+            labelKey="medida"
+            valueKey="id"
+            onChange={handleMedidaChange}
+            onCreate={async (newMedidaValue) => {
+              try {
+                const { data, error } = await supabase
+                  .from('medidas')
+                  .insert([{ medida: newMedidaValue }])
+                  .select();
+                if (error) throw error;
+                setMedidas([...medidas, data[0]]);
+                return data[0];
+              } catch (error) {
+                setError(error.message);
+                return null;
+              }
+            }}
           />
         </div>
         <div className="form-group">
@@ -186,7 +254,7 @@ function Accessories({ accessories, setAccessories }) {
           try {
             return (
               <li key={accessory.id}>
-                Tipo: {accessory.product_type}, Medida: {accessory.measurement_mm},
+                Produto: {accessory.produto}, Medida: {accessory.measurement_mm},
                 Unidade: {accessory.unit}, Cores:{' '}
                 {accessory.colors && accessory.colors.map((color) => (
                   <span key={color.color}>
