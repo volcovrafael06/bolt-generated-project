@@ -14,7 +14,8 @@
     "jspdf-autotable": "^3.8.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.29.0"
+    "react-router-dom": "^6.29.0",
+    "react-select": "^5.10.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
