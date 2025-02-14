@@ -116,15 +116,22 @@ function Accessories({ accessories, setAccessories }) {
         ])
         .select();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw insertError;
+      }
 
-      setAccessories((prevAccessories) => [...prevAccessories, ...data]);
-      setNewAccessory({
-        produto: null,
-        measurement_mm: null,
-        unit: '',
-        colors: [],
-      }); // Clear form
+      if (data && data.length > 0) {
+          setAccessories((prevAccessories) => [...prevAccessories, ...data]);
+          setNewAccessory({
+            produto: null,
+            measurement_mm: null,
+            unit: '',
+            colors: [],
+          }); // Clear form
+      } else {
+        console.warn("No data returned from Supabase insert.");
+      }
     } catch (error) {
       setError(error.message);
     } finally {
@@ -252,9 +259,12 @@ function Accessories({ accessories, setAccessories }) {
       <ul>
         {accessories.map((accessory) => {
           try {
+            const produto = produtos.find((p) => p.id === accessory.produto);
+            const produtoName = produto ? produto.nome : 'Unknown Product';
+
             return (
               <li key={accessory.id}>
-                Produto: {accessory.produto}, Medida: {accessory.measurement_mm},
+                Produto: {produtoName}, Medida: {accessory.measurement_mm},
                 Unidade: {accessory.unit}, Cores:{' '}
                 {accessory.colors && accessory.colors.map((color) => (
                   <span key={color.color}>
