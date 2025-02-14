@@ -51,20 +51,43 @@
   border: 1px solid #ddd;
 }
 
-.items-section table {
-  width: 100%;
-  border-collapse: collapse;
+.items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.items-section th,
-.items-section td {
+.item-card {
+  background-color: #f8f8f8;
   border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  padding: 15px;
 }
 
-.items-section th {
-  background-color: #f0f0f0;
+.item-description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-name {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #666;
+}
+
+.item-total {
+  font-weight: bold;
+  color: #333;
+  margin-top: 4px;
 }
 
 .price-breakdown {
@@ -133,5 +156,10 @@
   .company-logo {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .item-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

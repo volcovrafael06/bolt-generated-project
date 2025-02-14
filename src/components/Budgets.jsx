@@ -1,332 +1,367 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabase/client';
-import SelectOrCreate from './SelectOrCreate';
+import { clienteService } from '../services/clienteService';
+import { produtoService } from '../services/produtoService';
+import { orcamentoService } from '../services/orcamentoService';
+import ProductSelector from './ProductSelector';
+import Customers from './Customers';
 import './Budgets.css';
 
-function Budgets({ budgets, setBudgets }) {
-  const [newBudget, setNewBudget] = useState({
-    customer: null,
-    product: null,
-    bando: false,
-    installation: false,
-    accessories: [],
-    observation: '',
-  });
+function Budgets() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [accessoriesList, setAccessoriesList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [showProductSelector, setShowProductSelector] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [budgetAccessories, setBudgetAccessories] = useState({});
+  const [paymentMethods] = useState([
+    'À Vista', 
+    'Boleto', 
+    'Cartão de Crédito', 
+    'Cartão de Débito', 
+    'Pix', 
+    'Transferência Bancária'
+  ]);
+
+  const [budgetDetails, setBudgetDetails] = useState({
+    observation: '',
+    paymentMethod: '',
+    installationValue: 0,
+  });
 
   useEffect(() => {
-    fetchCustomers();
-    fetchProducts();
-    fetchAccessories();
-    // Fetch accessories for existing budgets
-    if (budgets && budgets.length > 0) {
-      fetchBudgetAccessories(budgets);
-    }
-  }, [budgets]);
+    fetchInitialData();
+  }, []);
 
-  const fetchCustomers = async () => {
+  const fetchInitialData = async () => {
     try {
-      const { data, error } = await supabase.from('clientes').select('*');
-      if (error) throw error;
-      setCustomers(data || []);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
+      setLoading(true);
+      const [customerData, productData] = await Promise.all([
+        clienteService.getAll(),
+        produtoService.getAll()
+      ]);
 
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase.from('produtos').select('*');
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const fetchAccessories = async () => {
-    try {
-      const { data, error } = await supabase.from('accessories').select('*');
-      if (error) throw error;
-      setAccessoriesList(data || []);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const fetchBudgetAccessories = async (budgets) => {
-    const accessoriesMap = {};
-    for (const budget of budgets) {
-      if (budget.accessories && budget.accessories.length > 0) {
-        const accessoryDetails = await Promise.all(
-          budget.accessories.map(async (accessoryId) => {
-            try {
-              const { data, error } = await supabase
-                .from('accessories')
-                .select('*')
-                .eq('id', accessoryId)
-                .single();
-              if (error) {
-                console.error('Error fetching accessory:', accessoryId, error);
-                return `ID: ${accessoryId} (Erro ao carregar)`;
-              }
-              return `${data.produto} - ${data.unit}`; // Adjust based on your accessories table structure
-            } catch (err) {
-              console.error('Error fetching accessory:', accessoryId, err);
-              return `ID: ${accessoryId} (Erro ao carregar)`;
-            }
-          })
-        );
-        accessoriesMap[budget.id] = accessoryDetails.join(', ');
-      } else {
-        accessoriesMap[budget.id] = 'Nenhum';
-      }
-    }
-    setBudgetAccessories(accessoriesMap);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
-    setNewBudget((prev) => ({
-      ...prev,
-      [name]: newValue,
-    }));
-  };
-
-  const handleCustomerChange = (selectedCustomer) => {
-    setNewBudget((prev) => ({ ...prev, customer: selectedCustomer }));
-  };
-
-  const handleProductChange = (selectedProduct) => {
-    setNewBudget((prev) => ({ ...prev, product: selectedProduct }));
-  };
-
-  const handleAccessoriesChange = (selectedAccessories) => {
-    setNewBudget((prev) => ({
-      ...prev,
-      accessories: selectedAccessories,
-    }));
-  };
-
-  const handleAddBudget = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await supabase.from('orcamentos').insert([
-        {
-          customer_id: newBudget.customer ? newBudget.customer.id : null,
-          product_id: newBudget.product ? newBudget.product.id : null,
-          bando: newBudget.bando,
-          installation: newBudget.installation,
-          accessories: newBudget.accessories.map((acc) => acc.id),
-          observation: newBudget.observation,
-        },
-      ]).select();
-
-      if (error) throw error;
-
-      // Fetch the names of the accessories for the new budget
-      if (data && data.length > 0) {
-        const newBudgetAccessories = await Promise.all(
-          data[0].accessories.map(async (accessoryId) => {
-            try {
-              const { data: accessoryData, error: accessoryError } = await supabase
-                .from('accessories')
-                .select('*')
-                .eq('id', accessoryId)
-                .single();
-
-              if (accessoryError) {
-                console.error('Error fetching accessory:', accessoryId, accessoryError);
-                return `ID: ${accessoryId} (Erro ao carregar)`;
-              }
-
-              const product = products.find((p) => p.id === accessoryData.produto);
-              const productName = product ? product.nome : 'Unknown Product';
-
-              return `${productName} - ${accessoryData.unit}`;
-            } catch (err) {
-              console.error('Error fetching accessory:', accessoryId, err);
-              return `ID: ${accessoryId} (Erro ao carregar)`;
-            }
-          })
-        );
-
-        setBudgetAccessories((prevAccessories) => ({
-          ...prevAccessories,
-          [data[0].id]: newBudgetAccessories.join(', '),
-        }));
-      }
-
-      setBudgets((prevBudgets) => [...prevBudgets, data[0]]);
-      setNewBudget({
-        customer: null,
-        product: null,
-        bando: false,
-        installation: false,
-        accessories: [],
-        observation: '',
-      });
-    } catch (error) {
-      setError(error.message);
+      setCustomers(customerData);
+      setProducts(productData);
+    } catch (err) {
+      setError('Erro ao carregar dados: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  const handleCustomerChange = (event) => {
+    const customerId = event.target.value;
+    const customer = customers.find(c => c.id === parseInt(customerId, 10));
+    setSelectedCustomer(customer);
+  };
+
+  const handleProductSelect = (product) => {
+    const newProduct = {
+      ...product,
+      width: 0,
+      length: 0,
+      height: 0,
+      m2: 0,
+      hasInstallation: false,
+      hasBando: false,
+      bandoValue: 0,
+      totalValue: 0
+    };
+    setSelectedProducts([...selectedProducts, newProduct]);
+    setShowProductSelector(false);
+  };
+
+  const updateProductDetails = (index, updates) => {
+    const updatedProducts = [...selectedProducts];
+    const product = updatedProducts[index];
+    
+    const newProduct = { ...product, ...updates };
+
+    // Calculation logic based on product type and calculation method
+    if (newProduct.calculation_method === 'm2') {
+      newProduct.m2 = newProduct.length * newProduct.height;
+      newProduct.totalValue = newProduct.m2 * newProduct.sale_price;
+    } else if (newProduct.product === 'WAVE') {
+      newProduct.totalValue = newProduct.width * newProduct.sale_price;
+    } else {
+      newProduct.totalValue = newProduct.width * newProduct.height * newProduct.sale_price;
+    }
+
+    // Bando calculation
+    if (newProduct.hasBando) {
+      newProduct.bandoValue = newProduct.width * 120;
+    } else {
+      newProduct.bandoValue = 0;
+    }
+
+    updatedProducts[index] = newProduct;
+    setSelectedProducts(updatedProducts);
+  };
+
+  const removeProduct = (indexToRemove) => {
+    setSelectedProducts(selectedProducts.filter((_, index) => index !== indexToRemove));
+  };
+
+  const calculateTotalBudget = () => {
+    const productTotal = selectedProducts.reduce((total, product) => total + product.totalValue, 0);
+    const installationTotal = budgetDetails.installationValue || 0;
+    const bandoTotal = selectedProducts.reduce((total, product) => total + (product.bandoValue || 0), 0);
+    
+    return productTotal + installationTotal + bandoTotal;
+  };
+
+  const handleCreateBudget = async () => {
+    if (!selectedCustomer || selectedProducts.length === 0) {
+      alert('Por favor, selecione um cliente e adicione produtos.');
+      return;
+    }
+
+    try {
+      const budgetData = {
+        cliente_id: selectedCustomer.id,
+        produtos: selectedProducts,
+        observacao: budgetDetails.observation,
+        forma_pagamento: budgetDetails.paymentMethod,
+        valor_instalacao: budgetDetails.installationValue,
+        valor_total: calculateTotalBudget()
+      };
+
+      await orcamentoService.create(budgetData);
+      alert('Orçamento criado com sucesso!');
+      
+      // Reset form
+      setSelectedCustomer(null);
+      setSelectedProducts([]);
+      setBudgetDetails({
+        observation: '',
+        paymentMethod: '',
+        installationValue: 0
+      });
+    } catch (err) {
+      setError('Erro ao criar orçamento: ' + err.message);
+    }
+  };
+
+  if (loading) return <div>Carregando...</div>;
+  if (error) return <div>Erro: {error}</div>;
 
   return (
     <div className="budgets-container">
-      <h2>Orçamentos</h2>
-      <form onSubmit={handleAddBudget}>
-        <div className="form-group">
-          <label htmlFor="customer">Cliente:</label>
-          <SelectOrCreate
-            id="customer"
-            name="customer"
-            options={customers}
-            labelKey="nome"
-            valueKey="id"
+      <h2>Novo Orçamento</h2>
+      
+      {/* Customer Selection */}
+      <div className="customer-section">
+        <h3>Selecione o Cliente</h3>
+        <div className="customer-selection">
+          <select 
+            value={selectedCustomer ? selectedCustomer.id : ''} 
             onChange={handleCustomerChange}
-            onCreate={async (newCustomerName) => {
-              try {
-                const { data, error } = await supabase
-                  .from('clientes')
-                  .insert([{ nome: newCustomerName }])
-                  .select();
-                if (error) throw error;
-                setCustomers([...customers, data[0]]);
-                return data[0];
-              } catch (error) {
-                setError(error.message);
-                return null;
-              }
-            }}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="product">Produto:</label>
-          <select
-            id="product"
-            name="product"
-            onChange={handleProductChange}
           >
-            <option value="">Selecione um produto</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {`${product.produto} - ${product.modelo} - ${product.tecido} - ${product.nome} - ${product.codigo} - Preço: ${product.preco_venda}`}
+            <option value="" disabled>Selecione um cliente</option>
+            {customers.map(customer => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name} - {customer.phone}
               </option>
             ))}
           </select>
-          {newBudget.product && (
-            <div className="product-details">
-              <p>Produto: {newBudget.product.produto}</p>
-              <p>Modelo: {newBudget.product.modelo}</p>
-              <p>Tecido: {newBudget.product.tecido}</p>
-              <p>Nome: {newBudget.product.nome}</p>
-              <p>Código: {newBudget.product.codigo}</p>
-              <p>Preço: {newBudget.product.preco_venda}</p>
+          <button onClick={() => setShowCustomerForm(!showCustomerForm)}>
+            {showCustomerForm ? 'Cancelar' : 'Novo Cliente'}
+          </button>
+        </div>
+
+        {showCustomerForm && (
+          <div className="customer-form-modal">
+            <Customers onCustomerCreated={(newCustomer) => {
+              setCustomers([...customers, newCustomer]);
+              setSelectedCustomer(newCustomer);
+              setShowCustomerForm(false);
+            }} />
+          </div>
+        )}
+
+        {selectedCustomer && (
+          <div className="selected-customer-details">
+            <p>Nome: {selectedCustomer.name}</p>
+            <p>Telefone: {selectedCustomer.phone}</p>
+            <p>Email: {selectedCustomer.email}</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Products Section */}
+      <div className="products-section">
+        <h3>Produtos</h3>
+        <button onClick={() => setShowProductSelector(!showProductSelector)}>
+          Adicionar Produto
+        </button>
+
+        {showProductSelector && (
+          <div className="product-selector-modal">
+            <ProductSelector onSelect={handleProductSelect} />
+          </div>
+        )}
+
+        {selectedProducts.map((product, index) => (
+          <div key={index} className="selected-product-details">
+            <h4>{product.name}</h4>
+            
+            {/* Measurement Fields */}
+            {product.calculation_method === 'm2' ? (
+              <div className="measurement-fields">
+                <div className="form-group">
+                  <label>Comprimento:</label>
+                  <input 
+                    type="number" 
+                    value={product.length} 
+                    onChange={(e) => updateProductDetails(index, { length: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Altura:</label>
+                  <input 
+                    type="number" 
+                    value={product.height} 
+                    onChange={(e) => updateProductDetails(index, { height: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>M²:</label>
+                  <input 
+                    type="number" 
+                    value={product.m2} 
+                    readOnly 
+                  />
+                </div>
+              </div>
+            ) : product.product === 'WAVE' ? (
+              <div className="measurement-fields">
+                <div className="form-group">
+                  <label>Largura:</label>
+                  <input 
+                    type="number" 
+                    value={product.width} 
+                    onChange={(e) => updateProductDetails(index, { width: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="measurement-fields">
+                <div className="form-group">
+                  <label>Largura:</label>
+                  <input 
+                    type="number" 
+                    value={product.width} 
+                    onChange={(e) => updateProductDetails(index, { width: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Altura:</label>
+                  <input 
+                    type="number" 
+                    value={product.height} 
+                    onChange={(e) => updateProductDetails(index, { height: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Bando Checkbox */}
+            <div className="form-group">
+              <label>
+                <input 
+                  type="checkbox" 
+                  checked={product.hasBando}
+                  onChange={(e) => updateProductDetails(index, { hasBando: e.target.checked })}
+                />
+                Bandô
+              </label>
+              {product.hasBando && (
+                <div>Valor do Bandô: R$ {product.bandoValue.toFixed(2)}</div>
+              )}
             </div>
+
+            {/* Total Value */}
+            <div className="product-total">
+              <strong>Total do Produto: R$ {product.totalValue.toFixed(2)}</strong>
+            </div>
+
+            <button onClick={() => removeProduct(index)}>Remover Produto</button>
+          </div>
+        ))}
+      </div>
+
+      {/* Additional Budget Details */}
+      <div className="budget-details">
+        <div className="form-group">
+          <label>
+            <input 
+              type="checkbox" 
+              checked={!!budgetDetails.installationValue}
+              onChange={(e) => setBudgetDetails(prev => ({
+                ...prev, 
+                installationValue: e.target.checked ? 0 : null
+              }))}
+            />
+            Valor de Instalação
+          </label>
+          {budgetDetails.installationValue !== null && (
+            <input 
+              type="number" 
+              value={budgetDetails.installationValue}
+              onChange={(e) => setBudgetDetails(prev => ({
+                ...prev, 
+                installationValue: parseFloat(e.target.value)
+              }))}
+              placeholder="Digite o valor da instalação"
+            />
           )}
         </div>
 
         <div className="form-group">
-          <label htmlFor="bando">Bandô:</label>
-          <select
-            id="bando"
-            name="bando"
-            value={newBudget.bando}
-            onChange={handleInputChange}
+          <label>Forma de Pagamento:</label>
+          <select 
+            value={budgetDetails.paymentMethod}
+            onChange={(e) => setBudgetDetails(prev => ({
+              ...prev, 
+              paymentMethod: e.target.value
+            }))}
           >
-            <option value={false}>Não</option>
-            <option value={true}>Sim</option>
+            <option value="">Selecione</option>
+            {paymentMethods.map(method => (
+              <option key={method} value={method}>{method}</option>
+            ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="installation">Instalação:</label>
-          <select
-            id="installation"
-            name="installation"
-            value={newBudget.installation}
-            onChange={handleInputChange}
-          >
-            <option value={false}>Não</option>
-            <option value={true}>Sim</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="accessories">Acessórios:</label>
-          <select
-            id="accessories"
-            name="accessories"
-            multiple
-            onChange={(e) => {
-              const selectedAccessoryIds = Array.from(
-                e.target.selectedOptions,
-                (option) => parseInt(option.value)
-              );
-              const selectedAccessories = accessoriesList.filter((accessory) =>
-                selectedAccessoryIds.includes(accessory.id)
-              );
-              handleAccessoriesChange(selectedAccessories);
-            }}
-          >
-            {accessoriesList.map((accessory) => {
-              try {
-                const produto = products.find((p) => p.id === accessory.produto);
-                const produtoName = produto ? produto.nome : 'Unknown Product';
-
-                return (
-                  <option key={accessory.id} value={accessory.id}>
-                    {produtoName} - {accessory.unit}
-                  </option>
-                );
-              } catch (e) {
-                console.error("Error rendering accessory:", accessory, e);
-                return null;
-              }
-            })}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="observation">Observações:</label>
-          <textarea
-            id="observation"
-            name="observation"
-            value={newBudget.observation}
-            onChange={handleInputChange}
+          <label>Observações:</label>
+          <textarea 
+            value={budgetDetails.observation}
+            onChange={(e) => setBudgetDetails(prev => ({
+              ...prev, 
+              observation: e.target.value
+            }))}
+            placeholder="Observações adicionais"
           />
         </div>
+      </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Criando...' : 'Finalizar Orçamento'}
+      {/* Total Budget */}
+      <div className="budget-total">
+        <h3>Total do Orçamento: R$ {calculateTotalBudget().toFixed(2)}</h3>
+      </div>
+
+      {/* Create Budget Button */}
+      <div className="budget-submission">
+        <button 
+          onClick={handleCreateBudget}
+          disabled={!selectedCustomer || selectedProducts.length === 0}
+        >
+          Criar Orçamento
         </button>
-      </form>
-
-      <ul>
-        {budgets.map((budget) => (
-          <li key={budget.id}>
-            Cliente: {budget.customer_id}, Produto: {budget.product_id},
-            Bandô: {budget.bando ? 'Sim' : 'Não'}, Instalação:{' '}
-            {budget.installation ? 'Sim' : 'Não'}, Acessórios:{' '}
-            {budgetAccessories[budget.id] ? budgetAccessories[budget.id] : 'Nenhum'}, Observações: {budget.observation}
-          </li>
-        ))}
-      </ul>
+      </div>
     </div>
   );
 }

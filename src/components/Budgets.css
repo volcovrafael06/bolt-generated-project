@@ -1,73 +1,90 @@
-/* ... (estilos existentes mantidos) */
+.budgets-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-.added-product-item {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 15px;
+.customer-selection {
+  display: flex;
+  gap: 10px;
   margin-bottom: 15px;
 }
 
-.product-info {
-  margin-bottom: 10px;
+.customer-form-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
-.product-info strong {
-  color: #495057;
-  margin-right: 5px;
+.selected-customer-details {
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
 }
 
-.product-options {
-  margin: 10px 0;
-  padding: 10px 0;
-  border-top: 1px dashed #dee2e6;
-}
-
-.product-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.product-actions button {
-  padding: 5px 10px;
-  font-size: 0.9em;
-}
-
-.product-actions button:first-child {
-  background-color: #17a2b8;
-}
-
-.product-actions button:last-child {
-  background-color: #dc3545;
-}
-
-.product-details {
-  display: flex;
-  gap: 10px;
-  margin: 15px 0;
-  align-items: center;
-}
-
-.product-details input {
-  width: 120px;
-}
-
-select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
+.selected-product-details {
   border: 1px solid #ddd;
+  padding: 15px;
+  margin-bottom: 15px;
   border-radius: 4px;
 }
 
-/* Estilo para o checkbox do bando */
-.product-options label {
+.measurement-fields {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+}
+
+.budget-details {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f4f4f4;
+  border-radius: 4px;
+}
+
+.budget-total {
+  text-align: right;
+  margin-top: 20px;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.budget-submission {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.budget-submission button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
 }
 
-.product-options input[type="checkbox"] {
-  margin: 0;
+.budget-submission button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
