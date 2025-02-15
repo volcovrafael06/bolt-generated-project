@@ -167,20 +167,26 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
           <section className="items-section">
             <h3>Itens do Orçamento</h3>
             {budget.items && budget.items.length > 0 ? (
-              <ul className="items-list">
-                {budget.items.map((item, index) => (
-                  <li key={index} className="item-card">
-                    <div className="item-description">
-                      <span className="item-name">{getItemDescription(item)}</span>
-                      <div className="item-details">
-                        <span>Quantidade: {getItemQuantity(item)}</span>
-                        <span>Preço Unitário: {formatCurrency(getItemUnitPrice(item))}</span>
-                        <span className="item-total">Total: {formatCurrency(item.price)}</span>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th>QTD</th>
+                    <th>Preço Unit.</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {budget.items.map((item, index) => (
+                    <tr key={index}>
+                      <td>{getItemDescription(item)}</td>
+                      <td>{getItemQuantity(item)}</td>
+                      <td>{formatCurrency(getItemUnitPrice(item))}</td>
+                      <td>{formatCurrency(item.price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : (
               <p>Nenhum item neste orçamento.</p>
             )}

@@ -15,7 +15,7 @@ export const produtoService = {
       produto: produto.product,
       modelo: produto.model,
       tecido: produto.material,
-      name: produto.name, // Changed from nome to name
+      nome: produto.name,
       codigo: produto.code,
       preco_custo: produto.cost_price,
       margem_lucro: produto.profit_margin,
@@ -37,7 +37,7 @@ export const produtoService = {
       produto: produto.product,
       modelo: produto.model,
       tecido: produto.material,
-      name: produto.name, // Changed from nome to name
+      nome: produto.name,
       codigo: produto.code,
       preco_custo: produto.cost_price,
       margem_lucro: produto.profit_margin,

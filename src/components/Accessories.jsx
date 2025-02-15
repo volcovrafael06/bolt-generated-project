@@ -25,16 +25,12 @@ function Accessories({ accessories, setAccessories }) {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
+      let { data: accessoriesData, error: fetchError } = await supabase
         .from('accessories')
-        .select(`
-          *,
-          produtos:produto (nome),
-          medidas:measurement_mm (medida)
-        `);
+        .select('*');
 
-      if (error) throw error;
-      setAccessories(data || []);
+      if (fetchError) throw fetchError;
+      setAccessories(accessoriesData || []);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -92,7 +88,7 @@ function Accessories({ accessories, setAccessories }) {
       ...prev,
       colors: [...prev.colors, newColor],
     }));
-    setNewColor({ color: '', price: 0 }); 
+    setNewColor({ color: '', price: 0 }); // Clear color input
   };
 
   const handleAddAccessory = async (e) => {
@@ -118,22 +114,23 @@ function Accessories({ accessories, setAccessories }) {
             colors: newAccessory.colors,
           },
         ])
-        .select(`
-          *,
-          produtos:produto (nome),
-          medidas:measurement_mm (medida)
-        `);
+        .select();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Supabase insert error:", insertError);
+        throw insertError;
+      }
 
       if (data && data.length > 0) {
-        setAccessories((prevAccessories) => [...prevAccessories, ...data]);
-        setNewAccessory({
-          produto: null,
-          measurement_mm: null,
-          unit: '',
-          colors: [],
-        });
+          setAccessories((prevAccessories) => [...prevAccessories, ...data]);
+          setNewAccessory({
+            produto: null,
+            measurement_mm: null,
+            unit: '',
+            colors: [],
+          }); // Clear form
+      } else {
+        console.warn("No data returned from Supabase insert.");
       }
     } catch (error) {
       setError(error.message);
@@ -149,8 +146,8 @@ function Accessories({ accessories, setAccessories }) {
     }));
   };
 
-  if (loading) return <p>Carregando...</p>;
-  if (error) return <p>Erro: {error}</p>;
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
@@ -259,25 +256,27 @@ function Accessories({ accessories, setAccessories }) {
         </button>
       </form>
 
-      <h3>Acessórios Cadastrados</h3>
       <ul>
         {accessories.map((accessory) => {
-          const produtoName = accessory.produtos?.nome || 'Produto Não Encontrado';
-          const medidaName = accessory.medidas?.medida || 'Medida Não Encontrada';
+          try {
+            const produto = produtos.find((p) => p.id === accessory.produto);
+            const produtoName = produto ? produto.nome : 'Unknown Product';
 
-          return (
-            <li key={accessory.id}>
-              Produto: {produtoName}, 
-              Medida: {medidaName}, 
-              Unidade: {accessory.unit}, 
-              Cores: {' '}
-              {accessory.colors && accessory.colors.map((color) => (
-                <span key={color.color}>
-                  {color.color} (R$ {color.price && color.price.toFixed(2)}){' '}
-                </span>
-              ))}
-            </li>
-          );
+            return (
+              <li key={accessory.id}>
+                Produto: {produtoName}, Medida: {accessory.measurement_mm},
+                Unidade: {accessory.unit}, Cores:{' '}
+                {accessory.colors && accessory.colors.map((color) => (
+                  <span key={color.color}>
+                    {color.color} (R$ {color.price && color.price.toFixed(2)}){' '}
+                  </span>
+                ))}
+              </li>
+            );
+          } catch (e) {
+            console.error("Error rendering accessory:", accessory, e);
+            return null;
+          }
         })}
       </ul>
     </div>
