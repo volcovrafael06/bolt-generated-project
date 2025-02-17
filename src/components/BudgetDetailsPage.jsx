@@ -3,188 +3,142 @@ import { useParams } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import './BudgetDetailsPage.css';
+import { supabase } from '../supabase/client';
 
 function BudgetDetailsPage({ budgets, companyLogo }) {
   const { budgetId } = useParams();
-  const budget = budgets.find(budget => budget.id === parseInt(budgetId, 10));
-  const [configuracoes, setConfiguracoes] = useState({});
+  const [budget, setBudget] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const storedConfig = localStorage.getItem('configuracoes');
-    if (storedConfig) {
-      setConfiguracoes(JSON.parse(storedConfig));
-    }
-  }, []);
+    const loadBudgetDetails = async () => {
+      try {
+        // Fetch budget with customer data
+        const { data: budgetData, error: budgetError } = await supabase
+          .from('orcamentos')
+          .select(`
+            *,
+            clientes (
+              id,
+              name,
+              email,
+              phone,
+              address
+            )
+          `)
+          .eq('id', budgetId)
+          .single();
 
-  if (!budget) {
-    return <p>Orçamento não encontrado.</p>;
-  }
+        if (budgetError) throw budgetError;
 
-  const creationDate = new Date(budget.creationDate);
-  const formattedCreationDate = creationDate.toLocaleDateString();
-  
-  const validityDays = parseInt(configuracoes.validadeOrcamento || '30', 10);
-  const validityDate = new Date(creationDate);
-  validityDate.setDate(validityDate.getDate() + validityDays);
-  const formattedValidityDate = validityDate.toLocaleDateString();
+        // Fetch all products to get their details
+        const { data: productsData, error: productsError } = await supabase
+          .from('produtos')
+          .select('*');
 
-  const handlePrint = () => {
-    window.print();
-  };
+        if (productsError) throw productsError;
+
+        setBudget(budgetData);
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Error loading budget details:', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBudgetDetails();
+  }, [budgetId]);
+
+  if (loading) return <p>Carregando...</p>;
+  if (error) return <p>Erro: {error}</p>;
+  if (!budget) return <p>Orçamento não encontrado.</p>;
 
   const formatCurrency = (value) => {
-    if (typeof value !== 'number') return 'R$ 0,00';
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  const getItemDescription = (item) => {
-    if (!item || !item.item) return 'Item não especificado';
+  const getProductDetails = (productId) => {
+    return products.find(p => p.id === productId) || {};
+  };
 
-    if (item.type === 'product') {
-      const product = item.item;
-      let description = [
-        product.name || 'Produto',
-        product.model || '',
-        product.material || ''
-      ].filter(Boolean).join(' - ');
+  const formatProductDescription = (product, item) => {
+    const productDetails = getProductDetails(item.produto_id);
+    let description = [
+      productDetails.nome || 'Produto',
+      productDetails.modelo || '',
+      productDetails.tecido || '',
+      productDetails.codigo || ''
+    ].filter(Boolean).join(' - ');
 
-      if (item.length) {
-        description += ` (${item.length}${item.height ? ` x ${item.height}` : ''} m2)`;
-      }
-      if (item.hasBando) {
-        description += ' + Bando';
-      }
-      return description;
-    } else {
-      return `${item.item.name || 'Acessório'}`;
+    if (item.bando) {
+      description += ' COM BANDO';
     }
-  };
 
-  const getItemQuantity = (item) => {
-    if (!item || !item.item) return '1';
-
-    if (item.type === 'product' && item.item.calculationMethod === 'm2') {
-      return `${item.length || 0}${item.height ? ` x ${item.height}` : ''} m2`;
+    if (item.instalacao) {
+      description += ' INSTALADO';
     }
-    return '1';
+
+    return description;
   };
 
-  const getItemUnitPrice = (item) => {
-    if (!item || !item.item) return 0;
-
-    if (item.type === 'product') {
-      return item.item.salePrice || 0;
-    }
-    return item.item.price || 0;
-  };
-
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    
-    let y = 10;
-
-    // Add company info
-    doc.setFontSize(12);
-    doc.text(configuracoes.nomeFantasia || 'Ultracred', 120, y);
-    y += 7;
-    doc.text(`CNPJ: ${configuracoes.cnpj || '13.601.392/0001-96'}`, 120, y);
-    y += 7;
-    doc.text(configuracoes.endereco || 'av paulista', 120, y);
-    y += 7;
-    doc.text(`Tel.: ${configuracoes.telefone || '1533333840'}`, 120, y);
-    y += 15;
-
-    // Add dates and budget number
-    doc.text(`Data: ${formattedCreationDate}`, 10, y);
-    doc.text(`Validade: ${formattedValidityDate}`, 80, y);
-    doc.text(`Orçamento No: ${budget.id}`, 150, y);
-    y += 15;
-
-    // Add client info
-    doc.text('Cliente:', 10, y);
-    y += 7;
-    doc.text(`Nome: ${budget.customerName}`, 10, y);
-    y += 15;
-
-    // Add items table
-    const tableColumn = ["Descrição", "QTD", "Preço Unit.", "Total"];
-    const tableRows = (budget.items || []).map(item => [
-      getItemDescription(item),
-      getItemQuantity(item),
-      formatCurrency(getItemUnitPrice(item)),
-      formatCurrency(item.price || 0)
-    ]);
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: y,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [200, 200, 200] }
-    });
-
-    const finalY = doc.autoTable.previous.finalY;
-
-    // Add installation price
-    doc.text(`Instalação: ${formatCurrency(budget.installationPrice || 0)}`, 120, finalY + 10);
-    doc.text(`Total: ${formatCurrency(budget.totalValue)}`, 120, finalY + 20);
-
-    doc.text('Observações:', 10, finalY + 30);
-    doc.text(budget.observation || 'Retirada dos produtos em loja', 10, finalY + 37);
-
-    doc.save(`orcamento-${budget.id}.pdf`);
-  };
+  const budgetProducts = JSON.parse(budget.produtos_json || '[]');
 
   return (
     <div className="budget-details-container">
       <div className="budget-print-layout">
         <div className="header-section">
           <div className="logo-section">
-            {companyLogo && (
-              <img src={companyLogo} alt="Company Logo" className="company-logo" />
+            {companyLogo ? (
+              <img src={companyLogo} alt="Logo da Empresa" className="company-logo" />
+            ) : (
+              <img src="/persifix-logo.png" alt="Logo da Empresa" className="company-logo" />
             )}
           </div>
           <div className="company-info">
-            <p>{configuracoes.nomeFantasia || 'Ultracred'}</p>
-            <p>CNPJ: {configuracoes.cnpj || '13.601.392/0001-96'}</p>
-            <p>{configuracoes.endereco || 'av paulista'}</p>
-            <p>Tel.: {configuracoes.telefone || '1533333840'}</p>
+            <p>Ultracred</p>
+            <p>CNPJ: 13.601.392/0001-96</p>
+            <p>av paulista</p>
+            <p>Tel.: 1533333840</p>
           </div>
         </div>
 
         <div className="budget-content">
           <div className="dates-section">
-            <p>Data do Orçamento: {formattedCreationDate}</p>
-            <p>Válido até: {formattedValidityDate}</p>
+            <p>Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}</p>
+            <p>Válido até: {new Date(new Date(budget.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
           </div>
 
           <section className="client-section">
             <h3>Cliente</h3>
-            <p>Nome: {budget.customerName}</p>
+            <p>Nome: {budget.clientes?.name || 'Cliente não encontrado'}</p>
+            {budget.clientes?.address && <p>Endereço: {budget.clientes.address}</p>}
+            {budget.clientes?.phone && <p>Telefone: {budget.clientes.phone}</p>}
           </section>
 
           <section className="items-section">
             <h3>Itens do Orçamento</h3>
-            {budget.items && budget.items.length > 0 ? (
+            {budgetProducts.length > 0 ? (
               <table>
                 <thead>
                   <tr>
                     <th>Descrição</th>
-                    <th>QTD</th>
-                    <th>Preço Unit.</th>
                     <th>Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {budget.items.map((item, index) => (
-                    <tr key={index}>
-                      <td>{getItemDescription(item)}</td>
-                      <td>{getItemQuantity(item)}</td>
-                      <td>{formatCurrency(getItemUnitPrice(item))}</td>
-                      <td>{formatCurrency(item.price)}</td>
-                    </tr>
-                  ))}
+                  {budgetProducts.map((item, index) => {
+                    const productDetails = getProductDetails(item.produto_id);
+                    return (
+                      <tr key={index}>
+                        <td>{formatProductDescription(productDetails, item)}</td>
+                        <td>{formatCurrency(item.subtotal)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -194,20 +148,22 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
           <section className="totals-section">
             <div className="price-breakdown">
-              <p>Instalação: {formatCurrency(budget.installationPrice || 0)}</p>
-              <p>Total: {formatCurrency(budget.totalValue)}</p>
+              <p>Total: {formatCurrency(budget.valor_total)}</p>
             </div>
           </section>
 
-          <section className="observations-section">
-            <h3>Observações</h3>
-            <p>{budget.observation || 'Retirada dos produtos em loja'}</p>
-          </section>
+          {budget.observacao && (
+            <section className="observations-section">
+              <h3>Observações</h3>
+              <p>{budget.observacao}</p>
+            </section>
+          )}
         </div>
       </div>
-      <div className="button-container">
-        <button onClick={handlePrint} className="action-button">Imprimir</button>
-        <button onClick={handleDownloadPDF} className="action-button">Download PDF</button>
+
+      <div className="action-buttons">
+        <button onClick={() => window.print()} className="print-button">Imprimir</button>
+        <button className="download-pdf-button">Download PDF</button>
       </div>
     </div>
   );

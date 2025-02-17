@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import './BudgetList.css';
 
 function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget }) {
   const location = useLocation();
@@ -13,19 +14,20 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
   const currentYear = today.getFullYear();
 
   const filteredBudgets = budgets
-    .sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .filter(budget => {
       if (filter === 'monthly') {
-        const budgetDate = new Date(budget.creationDate);
+        const budgetDate = new Date(budget.created_at);
         return budgetDate.getMonth() === currentMonth && budgetDate.getFullYear() === currentYear;
       } else if (filter === 'finalized') {
         return budget.status === 'finalizado';
       }
       return true;
     })
-    .filter(budget =>
-      budget.customerName.toUpperCase().includes(searchTerm.toUpperCase())
-    );
+    .filter(budget => {
+      const customerName = budget.clientes?.name || '';
+      return customerName.toUpperCase().includes(searchTerm.toUpperCase());
+    });
 
   const calculateExpirationDate = (creationDate, validadeOrcamento) => {
     const creation = new Date(creationDate);
@@ -38,7 +40,7 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
     <div>
       <h2>Lista de Orçamentos</h2>
 
-      <Link to="/budgets/new">Novo Orçamento</Link>
+      <Link to="/budgets/new" className="new-budget-button">Novo Orçamento</Link>
 
       <div className="form-group">
         <label htmlFor="search">Buscar por Cliente:</label>
@@ -67,15 +69,15 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
           <tbody>
             {filteredBudgets.map(budget => (
               <tr key={budget.id}>
-                <td>{budget.customerName}</td>
-                <td>{budget.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{new Date(budget.creationDate).toLocaleDateString()}</td>
-                <td>{calculateExpirationDate(budget.creationDate, validadeOrcamento)}</td>
-                <td>{budget.status}</td>
+                <td>{budget.clientes?.name || 'Cliente não encontrado'}</td>
+                <td>{budget.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>{new Date(budget.created_at).toLocaleDateString()}</td>
+                <td>{calculateExpirationDate(budget.created_at, validadeOrcamento)}</td>
+                <td>{budget.status || 'pendente'}</td>
                 <td>
                   <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
                   <Link to={`/budgets/${budget.id}/edit`}>Editar</Link> |
-                  {budget.status !== 'finalizado' && (
+                  {(!budget.status || budget.status === 'pendente') && (
                     <>
                       <button onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}>Finalizar</button> |
                       <button onClick={() => onCancelBudget && onCancelBudget(budget.id)}>Cancelar</button>

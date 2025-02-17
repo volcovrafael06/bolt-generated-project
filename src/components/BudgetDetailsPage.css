@@ -1,20 +1,23 @@
 .budget-details-container {
-  padding: 20px;
   max-width: 800px;
   margin: 0 auto;
-  background-color: white;
+  padding: 20px;
 }
 
 .budget-print-layout {
-  padding: 20px;
+  background: white;
+  padding: 30px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 .header-section {
   display: flex;
-  margin-bottom: 20px;
-  border-top: 2px solid #ff0000;
-  border-bottom: 2px solid #ff0000;
-  padding: 10px 0;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .logo-section {
@@ -24,22 +27,22 @@
 .company-logo {
   max-width: 200px;
   height: auto;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .company-info {
-  width: 50%;
-  text-align: left;
+  text-align: right;
 }
 
 .company-info p {
-  margin: 0;
-  padding: 2px 0;
-  color: #666;
-  font-size: 14px;
+  margin: 5px 0;
 }
 
-.budget-content {
-  margin-top: 20px;
+.dates-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
 .client-section,
@@ -51,27 +54,58 @@
   border: 1px solid #ddd;
 }
 
+.client-section {
+  margin-bottom: 30px;
+}
+
+.client-section h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.client-section p {
+  margin: 5px 0;
+}
+
+.items-section {
+  margin-bottom: 30px;
+}
+
+.items-section h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
 .items-section table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.items-section th,
-.items-section td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
+  margin-bottom: 20px;
 }
 
 .items-section th {
-  background-color: #f0f0f0;
+  background-color: #f8f9fa;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.items-section td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.items-section td:last-child {
+  text-align: right;
+}
+
+.totals-section {
+  margin-top: 20px;
+  border-top: 2px solid #f0f0f0;
+  padding-top: 20px;
 }
 
 .price-breakdown {
   text-align: right;
-  padding: 10px;
-  background-color: #f8f8f8;
-  border-radius: 4px;
 }
 
 .price-breakdown p {
@@ -83,55 +117,66 @@
   font-weight: bold;
   font-size: 1.2em;
   margin-top: 10px;
-  border-top: 1px solid #ddd;
-  padding-top: 10px;
 }
 
-.button-container {
+.observations-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.observations-section h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.action-buttons {
   display: flex;
   gap: 10px;
+  justify-content: flex-end;
   margin-top: 20px;
 }
 
-.action-button {
+.print-button,
+.download-pdf-button {
   padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
 }
 
-.action-button:hover {
-  background-color: #0056b3;
+.print-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.download-pdf-button {
+  background-color: #2196F3;
+  color: white;
+}
+
+.print-button:hover {
+  background-color: #45a049;
+}
+
+.download-pdf-button:hover {
+  background-color: #1976D2;
 }
 
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .budget-details-container,
-  .budget-details-container * {
-    visibility: visible;
-  }
-  .budget-details-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0;
-  }
-  .button-container {
+  .action-buttons {
     display: none;
   }
-  
-  .header-section {
-    border-top: 2px solid #ff0000 !important;
-    border-bottom: 2px solid #ff0000 !important;
+
+  .budget-print-layout {
+    box-shadow: none;
+    padding: 0;
   }
-  
-  .company-logo {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+
+  .budget-details-container {
+    padding: 0;
   }
 }

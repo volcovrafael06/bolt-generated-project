@@ -1,43 +1,132 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabase/client';
+import { useNavigate, useParams } from 'react-router-dom';
 import SelectOrCreate from './SelectOrCreate';
+import { supabase } from '../supabase/client';
 import './Budgets.css';
 
-function Budgets({ budgets, setBudgets }) {
+function Budgets({ budgets, setBudgets, customers: initialCustomers, products: initialProducts, accessories: initialAccessories, setCustomers: updateParentCustomers }) {
+  const navigate = useNavigate();
+  const { budgetId } = useParams();
+  const isEditing = budgetId !== undefined;
+
   const [newBudget, setNewBudget] = useState({
     customer: null,
-    product: null,
-    bando: false,
-    installation: false,
+    products: [], 
     accessories: [],
     observation: '',
+    totalValue: 0
   });
-  const [customers, setCustomers] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [accessoriesList, setAccessoriesList] = useState([]);
+
+  const [currentProduct, setCurrentProduct] = useState({
+    product: null,
+    width: '',
+    height: '',
+    bando: false,
+    bandoValue: 0,
+    installation: false,
+    installationValue: 0,
+    subtotal: 0
+  });
+
+  const [localCustomers, setLocalCustomers] = useState([]);
+  const [products, setProducts] = useState(initialProducts || []);
+  const [accessoriesList, setAccessoriesList] = useState(initialAccessories || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [budgetAccessories, setBudgetAccessories] = useState({});
+  const [searchTerm, setSearchTerm] = useState({ customer: '', product: '' });
 
   useEffect(() => {
-    fetchCustomers();
-    fetchProducts();
-    fetchAccessories();
-    // Fetch accessories for existing budgets
-    if (budgets && budgets.length > 0) {
-      fetchBudgetAccessories(budgets);
-    }
-  }, [budgets]);
+    const fetchCustomers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('*')
+          .order('name');
+          
+        if (error) throw error;
+        setLocalCustomers(data || []);
+        updateParentCustomers?.(data || []); // Update parent state if callback exists
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        setError('Erro ao carregar clientes');
+      }
+    };
 
-  const fetchCustomers = async () => {
-    try {
-      const { data, error } = await supabase.from('clientes').select('*');
-      if (error) throw error;
-      setCustomers(data || []);
-    } catch (error) {
-      setError(error.message);
+    fetchCustomers();
+  }, [updateParentCustomers]);
+
+  useEffect(() => {
+    setProducts(initialProducts || []);
+  }, [initialProducts]);
+
+  useEffect(() => {
+    setAccessoriesList(initialAccessories || []);
+  }, [initialAccessories]);
+
+  useEffect(() => {
+    if (!initialCustomers || !initialProducts || !initialAccessories) {
+      fetchCustomers();
+      fetchProducts();
+      fetchAccessories();
     }
-  };
+    
+    // If editing, load the budget data
+    if (isEditing && budgetId && budgets) {
+      const budget = budgets.find(b => b.id === parseInt(budgetId));
+      if (budget) {
+        const customer = localCustomers.find(c => c.id === budget.cliente_id);
+        let products = [];
+        let accessories = [];
+        
+        try {
+          products = JSON.parse(budget.produtos_json || '[]');
+          accessories = JSON.parse(budget.acessorios_json || '[]');
+        } catch (e) {
+          console.error('Error parsing budget data:', e);
+        }
+        
+        setNewBudget({
+          customer,
+          products,
+          accessories,
+          observation: budget.observacao || '',
+          totalValue: budget.valor_total || 0
+        });
+      }
+    }
+  }, [isEditing, budgetId, budgets, localCustomers, products, initialCustomers, initialProducts, initialAccessories]);
+
+  useEffect(() => {
+    calculateProductSubtotal();
+  }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
+
+  useEffect(() => {
+    const loadBudgets = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .select(`
+            *,
+            clientes (
+              id,
+              name,
+              email,
+              phone,
+              address
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setBudgets(data || []);
+      } catch (error) {
+        console.error('Error loading budgets:', error);
+        setError('Erro ao carregar orçamentos');
+      }
+    };
+
+    loadBudgets();
+  }, [setBudgets]);
 
   const fetchProducts = async () => {
     try {
@@ -45,6 +134,7 @@ function Budgets({ budgets, setBudgets }) {
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
+      console.error('Error fetching products:', error);
       setError(error.message);
     }
   };
@@ -55,278 +145,416 @@ function Budgets({ budgets, setBudgets }) {
       if (error) throw error;
       setAccessoriesList(data || []);
     } catch (error) {
+      console.error('Error fetching accessories:', error);
       setError(error.message);
     }
   };
 
-  const fetchBudgetAccessories = async (budgets) => {
-    const accessoriesMap = {};
-    for (const budget of budgets) {
-      if (budget.accessories && budget.accessories.length > 0) {
-        const accessoryDetails = await Promise.all(
-          budget.accessories.map(async (accessoryId) => {
-            try {
-              const { data, error } = await supabase
-                .from('accessories')
-                .select('*')
-                .eq('id', accessoryId)
-                .single();
-              if (error) {
-                console.error('Error fetching accessory:', accessoryId, error);
-                return `ID: ${accessoryId} (Erro ao carregar)`;
-              }
-              return `${data.produto} - ${data.unit}`; // Adjust based on your accessories table structure
-            } catch (err) {
-              console.error('Error fetching accessory:', accessoryId, err);
-              return `ID: ${accessoryId} (Erro ao carregar)`;
-            }
-          })
-        );
-        accessoriesMap[budget.id] = accessoryDetails.join(', ');
-      } else {
-        accessoriesMap[budget.id] = 'Nenhum';
-      }
+  const calculateProductSubtotal = () => {
+    if (!currentProduct.product || !currentProduct.width) return;
+
+    let subtotal = 0;
+    const width = parseFloat(currentProduct.width) || 0;
+    const height = parseFloat(currentProduct.height) || 0;
+    const price = parseFloat(currentProduct.product.preco_venda) || 0;
+
+    // Calculate product value based on model
+    if (currentProduct.product.modelo.toUpperCase() === 'WAVE') {
+      subtotal = width * price;
+    } else if (width && height) {
+      subtotal = width * height * price;
     }
-    setBudgetAccessories(accessoriesMap);
+
+    // Add bandô value if selected
+    if (currentProduct.bando) {
+      const bandoValue = width * 120;
+      subtotal += bandoValue;
+      setCurrentProduct(prev => ({ ...prev, bandoValue }));
+    }
+
+    // Add installation value if selected
+    if (currentProduct.installation) {
+      subtotal += parseFloat(currentProduct.installationValue) || 0;
+    }
+
+    setCurrentProduct(prev => ({ ...prev, subtotal }));
   };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
-    setNewBudget((prev) => ({
-      ...prev,
-      [name]: newValue,
-    }));
+    setCurrentProduct(prev => ({ ...prev, [name]: newValue }));
   };
 
   const handleCustomerChange = (selectedCustomer) => {
-    setNewBudget((prev) => ({ ...prev, customer: selectedCustomer }));
-  };
-
-  const handleProductChange = (selectedProduct) => {
-    setNewBudget((prev) => ({ ...prev, product: selectedProduct }));
-  };
-
-  const handleAccessoriesChange = (selectedAccessories) => {
-    setNewBudget((prev) => ({
+    setNewBudget(prev => ({
       ...prev,
-      accessories: selectedAccessories,
+      customer: selectedCustomer
     }));
   };
 
-  const handleAddBudget = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+  const handleCreateCustomer = async (name) => {
     try {
-      const { data, error } = await supabase.from('orcamentos').insert([
-        {
-          customer_id: newBudget.customer ? newBudget.customer.id : null,
-          product_id: newBudget.product ? newBudget.product.id : null,
-          bando: newBudget.bando,
-          installation: newBudget.installation,
-          accessories: newBudget.accessories.map((acc) => acc.id),
-          observation: newBudget.observation,
-        },
-      ]).select();
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert([{ 
+          name,
+          email: '',
+          phone: '',
+          address: '',
+          cpf: ''
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      setLocalCustomers(prev => [...prev, data]);
+      updateParentCustomers?.(prev => [...prev, data]); // Update parent state if callback exists
+      return data;
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      setError('Erro ao criar cliente');
+      return null;
+    }
+  };
 
-      // Fetch the names of the accessories for the new budget
-      if (data && data.length > 0) {
-        const newBudgetAccessories = await Promise.all(
-          data[0].accessories.map(async (accessoryId) => {
-            try {
-              const { data: accessoryData, error: accessoryError } = await supabase
-                .from('accessories')
-                .select('*')
-                .eq('id', accessoryId)
-                .single();
+  const handleProductChange = (selectedProduct) => {
+    setCurrentProduct(prev => ({
+      ...prev,
+      product: selectedProduct,
+      width: '',
+      height: '',
+      bando: false,
+      bandoValue: 0,
+      installation: false,
+      installationValue: 0,
+      subtotal: 0
+    }));
+  };
 
-              if (accessoryError) {
-                console.error('Error fetching accessory:', accessoryId, accessoryError);
-                return `ID: ${accessoryId} (Erro ao carregar)`;
-              }
+  const handleAddProduct = () => {
+    if (!currentProduct.product || !currentProduct.width) {
+      setError("Por favor, preencha todos os campos do produto.");
+      return;
+    }
 
-              const product = products.find((p) => p.id === accessoryData.produto);
-              const productName = product ? product.nome : 'Unknown Product';
+    // Add the new product
+    const updatedProducts = [...newBudget.products, { ...currentProduct }];
+    
+    // Calculate new total
+    const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
 
-              return `${productName} - ${accessoryData.unit}`;
-            } catch (err) {
-              console.error('Error fetching accessory:', accessoryId, err);
-              return `ID: ${accessoryId} (Erro ao carregar)`;
-            }
-          })
-        );
+    // Update budget with new product and total
+    setNewBudget(prev => ({
+      ...prev,
+      products: updatedProducts,
+      totalValue: newTotal
+    }));
 
-        setBudgetAccessories((prevAccessories) => ({
-          ...prevAccessories,
-          [data[0].id]: newBudgetAccessories.join(', '),
-        }));
+    // Reset current product
+    setCurrentProduct({
+      product: null,
+      width: '',
+      height: '',
+      bando: false,
+      bandoValue: 0,
+      installation: false,
+      installationValue: 0,
+      subtotal: 0
+    });
+  };
+
+  const handleRemoveProduct = (index) => {
+    const updatedProducts = newBudget.products.filter((_, i) => i !== index);
+    const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    
+    setNewBudget(prev => ({
+      ...prev,
+      products: updatedProducts,
+      totalValue: newTotal
+    }));
+  };
+
+  const handleFinalizeBudget = async (e) => {
+    e.preventDefault();
+    
+    if (!newBudget.customer) {
+      setError("Por favor, selecione um cliente.");
+      return;
+    }
+
+    if (newBudget.products.length === 0) {
+      setError("Por favor, adicione pelo menos um produto.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Clean up the products data to match the database structure
+      const cleanProducts = newBudget.products.map(product => ({
+        produto_id: product.product.id,
+        largura: parseFloat(product.width),
+        altura: product.height ? parseFloat(product.height) : null,
+        bando: product.bando,
+        valor_bando: product.bandoValue,
+        instalacao: product.installation,
+        valor_instalacao: parseFloat(product.installationValue),
+        subtotal: product.subtotal
+      }));
+
+      const budgetData = {
+        cliente_id: newBudget.customer.id,
+        valor_total: newBudget.totalValue,
+        produtos_json: JSON.stringify(cleanProducts),
+        observacao: newBudget.observation || '',
+        acessorios_json: JSON.stringify(newBudget.accessories || [])
+      };
+
+      console.log('Saving budget with data:', budgetData);
+
+      let result;
+      if (isEditing) {
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .update(budgetData)
+          .eq('id', budgetId)
+          .select(`
+            *,
+            clientes (
+              id,
+              name,
+              email,
+              phone,
+              address
+            )
+          `)
+          .single();
+
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
+        result = data;
+
+        setBudgets(prev => prev.map(b => 
+          b.id === parseInt(budgetId) ? { ...b, ...result } : b
+        ));
+      } else {
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .insert([budgetData])
+          .select(`
+            *,
+            clientes (
+              id,
+              name,
+              email,
+              phone,
+              address
+            )
+          `)
+          .single();
+
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        result = data;
+
+        setBudgets(prev => [...prev, result]);
       }
 
-      setBudgets((prevBudgets) => [...prevBudgets, data[0]]);
-      setNewBudget({
-        customer: null,
-        product: null,
-        bando: false,
-        installation: false,
-        accessories: [],
-        observation: '',
-      });
+      navigate('/budgets');
     } catch (error) {
-      setError(error.message);
+      console.error('Detailed error:', error);
+      setError(`Erro ao salvar orçamento: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  const filteredCustomers = localCustomers.filter(customer =>
+    customer.name.toLowerCase().includes((searchTerm.customer || '').toLowerCase())
+  );
+
+  const filteredProducts = products.filter(product =>
+    product.nome?.toLowerCase().includes(searchTerm.product.toLowerCase()) ||
+    product.modelo?.toLowerCase().includes(searchTerm.product.toLowerCase()) ||
+    product.tecido?.toLowerCase().includes(searchTerm.product.toLowerCase()) ||
+    product.codigo?.toLowerCase().includes(searchTerm.product.toLowerCase())
+  );
+
+  if (loading) return <p>Carregando...</p>;
+  if (error) return <p>Erro: {error}</p>;
 
   return (
     <div className="budgets-container">
-      <h2>Orçamentos</h2>
-      <form onSubmit={handleAddBudget}>
-        <div className="form-group">
-          <label htmlFor="customer">Cliente:</label>
+      <h2>{isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}</h2>
+      <form onSubmit={handleFinalizeBudget}>
+        {/* Cliente Section */}
+        <div className="form-section">
+          <h3>Cliente</h3>
           <SelectOrCreate
-            id="customer"
-            name="customer"
-            options={customers}
-            labelKey="nome"
+            options={localCustomers}
+            value={newBudget.customer}
+            labelKey="name"
             valueKey="id"
             onChange={handleCustomerChange}
-            onCreate={async (newCustomerName) => {
-              try {
-                const { data, error } = await supabase
-                  .from('clientes')
-                  .insert([{ nome: newCustomerName }])
-                  .select();
-                if (error) throw error;
-                setCustomers([...customers, data[0]]);
-                return data[0];
-              } catch (error) {
-                setError(error.message);
-                return null;
-              }
-            }}
+            onCreate={handleCreateCustomer}
+            id="customer"
+            name="customer"
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="product">Produto:</label>
-          <select
-            id="product"
-            name="product"
-            onChange={handleProductChange}
-          >
-            <option value="">Selecione um produto</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {`${product.produto} - ${product.modelo} - ${product.tecido} - ${product.nome} - ${product.codigo} - Preço: ${product.preco_venda}`}
-              </option>
-            ))}
-          </select>
-          {newBudget.product && (
-            <div className="product-details">
-              <p>Produto: {newBudget.product.produto}</p>
-              <p>Modelo: {newBudget.product.modelo}</p>
-              <p>Tecido: {newBudget.product.tecido}</p>
-              <p>Nome: {newBudget.product.nome}</p>
-              <p>Código: {newBudget.product.codigo}</p>
-              <p>Preço: {newBudget.product.preco_venda}</p>
+        {/* Produtos Section */}
+        <div className="form-section">
+          <h3>Produtos</h3>
+          
+          {/* Lista de produtos já adicionados */}
+          {newBudget.products.length > 0 && (
+            <div className="added-products">
+              <h4>Produtos Adicionados ({newBudget.products.length})</h4>
+              <div className="products-summary">
+                <p>Total de produtos: {newBudget.products.length}</p>
+                <p>Valor total dos produtos: R$ {newBudget.totalValue.toFixed(2)}</p>
+              </div>
+              {newBudget.products.map((prod, index) => (
+                <div key={index} className="added-product-item">
+                  <div className="product-info">
+                    <p><strong>{prod.product.nome}</strong> - {prod.product.modelo}</p>
+                    <p>Dimensões: {prod.width}m {prod.height && `x ${prod.height}m`}</p>
+                    {prod.bando && <p>Bandô incluído</p>}
+                    {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
+                    <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="remove-button"
+                    onClick={() => handleRemoveProduct(index)}
+                  >
+                    Remover
+                  </button>
+                </div>
+              ))}
             </div>
           )}
+
+          {/* Adicionar novo produto */}
+          <div className="add-product">
+            <h4>Adicionar Produto</h4>
+            <input
+              type="text"
+              placeholder="Pesquisar produto..."
+              value={searchTerm.product}
+              onChange={(e) => setSearchTerm(prev => ({ ...prev, product: e.target.value }))}
+            />
+            <SelectOrCreate
+              options={filteredProducts}
+              value={currentProduct.product}
+              onChange={handleProductChange}
+              labelKey="nome"
+              valueKey="id"
+              onCreate={fetchProducts}
+              showCreate={false}
+            />
+
+            {currentProduct.product && (
+              <>
+                <div className="product-measurements">
+                  <input
+                    type="number"
+                    name="width"
+                    value={currentProduct.width}
+                    onChange={handleInputChange}
+                    placeholder="Largura"
+                    step="0.01"
+                  />
+                  {currentProduct.product.modelo !== 'WAVE' && (
+                    <input
+                      type="number"
+                      name="height"
+                      value={currentProduct.height}
+                      onChange={handleInputChange}
+                      placeholder="Altura"
+                      step="0.01"
+                    />
+                  )}
+                </div>
+
+                <div className="additional-options">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="bando"
+                      checked={currentProduct.bando}
+                      onChange={handleInputChange}
+                    />
+                    Bandô
+                  </label>
+                  
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="installation"
+                      checked={currentProduct.installation}
+                      onChange={handleInputChange}
+                    />
+                    Instalação
+                  </label>
+
+                  {currentProduct.installation && (
+                    <input
+                      type="number"
+                      name="installationValue"
+                      value={currentProduct.installationValue}
+                      onChange={handleInputChange}
+                      placeholder="Valor da instalação"
+                      step="0.01"
+                    />
+                  )}
+                </div>
+
+                {currentProduct.subtotal > 0 && (
+                  <p>Subtotal do produto: R$ {currentProduct.subtotal.toFixed(2)}</p>
+                )}
+
+                <button 
+                  type="button" 
+                  className="add-product-button"
+                  onClick={handleAddProduct}
+                >
+                  Adicionar Produto
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="bando">Bandô:</label>
-          <select
-            id="bando"
-            name="bando"
-            value={newBudget.bando}
-            onChange={handleInputChange}
-          >
-            <option value={false}>Não</option>
-            <option value={true}>Sim</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="installation">Instalação:</label>
-          <select
-            id="installation"
-            name="installation"
-            value={newBudget.installation}
-            onChange={handleInputChange}
-          >
-            <option value={false}>Não</option>
-            <option value={true}>Sim</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="accessories">Acessórios:</label>
-          <select
-            id="accessories"
-            name="accessories"
-            multiple
-            onChange={(e) => {
-              const selectedAccessoryIds = Array.from(
-                e.target.selectedOptions,
-                (option) => parseInt(option.value)
-              );
-              const selectedAccessories = accessoriesList.filter((accessory) =>
-                selectedAccessoryIds.includes(accessory.id)
-              );
-              handleAccessoriesChange(selectedAccessories);
-            }}
-          >
-            {accessoriesList.map((accessory) => {
-              try {
-                const produto = products.find((p) => p.id === accessory.produto);
-                const produtoName = produto ? produto.nome : 'Unknown Product';
-
-                return (
-                  <option key={accessory.id} value={accessory.id}>
-                    {produtoName} - {accessory.unit}
-                  </option>
-                );
-              } catch (e) {
-                console.error("Error rendering accessory:", accessory, e);
-                return null;
-              }
-            })}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="observation">Observações:</label>
+        {/* Observação Section */}
+        <div className="form-section">
+          <h3>Observação</h3>
           <textarea
-            id="observation"
             name="observation"
             value={newBudget.observation}
-            onChange={handleInputChange}
+            onChange={(e) => setNewBudget(prev => ({ ...prev, observation: e.target.value }))}
+            rows="4"
           />
         </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Criando...' : 'Finalizar Orçamento'}
+        {/* Total Value and Submit */}
+        {newBudget.totalValue > 0 && (
+          <div className="total-value">
+            <h3>Valor Total: R$ {newBudget.totalValue.toFixed(2)}</h3>
+          </div>
+        )}
+
+        <button type="submit" className="finalize-button" disabled={loading}>
+          {isEditing ? 'Salvar Alterações' : 'Finalizar Orçamento'}
         </button>
       </form>
-
-      <ul>
-        {budgets.map((budget) => (
-          <li key={budget.id}>
-            Cliente: {budget.customer_id}, Produto: {budget.product_id},
-            Bandô: {budget.bando ? 'Sim' : 'Não'}, Instalação:{' '}
-            {budget.installation ? 'Sim' : 'Não'}, Acessórios:{' '}
-            {budgetAccessories[budget.id] ? budgetAccessories[budget.id] : 'Nenhum'}, Observações: {budget.observation}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
