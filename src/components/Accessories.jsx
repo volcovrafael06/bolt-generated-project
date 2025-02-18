@@ -1,249 +1,229 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
-import SelectOrCreate from './SelectOrCreate';
+import './Accessories.css';
 
-function Accessories({ accessories, setAccessories }) {
+function Accessories() {
+  const [accessories, setAccessories] = useState([]);
   const [newAccessory, setNewAccessory] = useState({
-    produto: null,
-    measurement_mm: null,
+    name: '',
     unit: '',
     colors: [],
   });
   const [newColor, setNewColor] = useState({ color: '', price: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [produtos, setProdutos] = useState([]);
-  const [medidas, setMedidas] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
+    fetchUserProfile();
     fetchAccessories();
-    fetchProdutos();
-    fetchMedidas();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        setUserProfile(profile);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchAccessories = async () => {
     setLoading(true);
-    setError(null);
     try {
-      let { data: accessoriesData, error: fetchError } = await supabase
+      const { data, error } = await supabase
         .from('accessories')
         .select('*');
 
-      if (fetchError) throw fetchError;
-      setAccessories(accessoriesData || []);
+      if (error) throw error;
+      setAccessories(data || []);
     } catch (error) {
-      setError(error.message);
+      setError('Erro ao carregar acessórios: ' + error.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchProdutos = async () => {
-    try {
-      const { data, error } = await supabase.from('produtos').select('*');
-      if (error) throw error;
-      setProdutos(data || []);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const fetchMedidas = async () => {
-    try {
-      const { data, error } = await supabase.from('medidas').select('*');
-      if (error) throw error;
-      setMedidas(data || []);
-    } catch (error) {
-      setError(error.message);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewAccessory((prev) => ({
+    setNewAccessory(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
-  };
-
-  const handleProdutoChange = (selectedProduto) => {
-    setNewAccessory((prev) => ({ ...prev, produto: selectedProduto }));
-  };
-
-  const handleMedidaChange = (selectedMedida) => {
-    setNewAccessory((prev) => ({ ...prev, measurement_mm: selectedMedida }));
   };
 
   const handleColorInputChange = (e) => {
     const { name, value } = e.target;
-    setNewColor((prev) => ({
+    setNewColor(prev => ({
       ...prev,
-      [name]: name === 'price' ? parseFloat(value) || 0 : value,
+      [name]: name === 'price' ? parseFloat(value) || 0 : value
     }));
   };
 
   const handleAddColor = () => {
-    if (!newColor.color.trim() || newColor.price < 0) return;
-    setNewAccessory((prev) => ({
+    if (!newColor.color.trim() || newColor.price < 0) {
+      setError('Cor inválida ou preço negativo');
+      return;
+    }
+    
+    setNewAccessory(prev => ({
       ...prev,
-      colors: [...prev.colors, newColor],
+      colors: [...prev.colors, newColor]
     }));
-    setNewColor({ color: '', price: 0 }); // Clear color input
+    setNewColor({ color: '', price: 0 });
+    setError(null);
   };
 
-  const handleAddAccessory = async (e) => {
+  const handleDeleteColor = (indexToDelete) => {
+    setNewAccessory(prev => ({
+      ...prev,
+      colors: prev.colors.filter((_, index) => index !== indexToDelete)
+    }));
+  };
+
+  const validateAccessory = () => {
+    if (!newAccessory.name.trim()) return 'Digite o nome do acessório';
+    if (!newAccessory.unit.trim()) return 'Digite uma unidade';
+    if (newAccessory.colors.length === 0) return 'Adicione pelo menos uma cor';
+    if (!userProfile?.organization_id) return 'Perfil de usuário não encontrado';
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (
-      !newAccessory.produto ||
-      !newAccessory.measurement_mm ||
-      !newAccessory.unit.trim() ||
-      newAccessory.colors.length === 0
-    )
+    
+    const validationError = validateAccessory();
+    if (validationError) {
+      setError(validationError);
       return;
+    }
 
     setLoading(true);
     setError(null);
+
     try {
       const { data, error: insertError } = await supabase
         .from('accessories')
-        .insert([
-          {
-            produto: newAccessory.produto.id,
-            measurement_mm: newAccessory.measurement_mm.id,
-            unit: newAccessory.unit,
-            colors: newAccessory.colors,
-          },
-        ])
+        .insert([{
+          name: newAccessory.name,
+          unit: newAccessory.unit,
+          colors: newAccessory.colors,
+          organization_id: userProfile.organization_id
+        }])
         .select();
 
-      if (insertError) {
-        console.error("Supabase insert error:", insertError);
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
-      if (data && data.length > 0) {
-          setAccessories((prevAccessories) => [...prevAccessories, ...data]);
-          setNewAccessory({
-            produto: null,
-            measurement_mm: null,
-            unit: '',
-            colors: [],
-          }); // Clear form
-      } else {
-        console.warn("No data returned from Supabase insert.");
-      }
+      setAccessories(prev => [...prev, ...data]);
+      setNewAccessory({
+        name: '',
+        unit: '',
+        colors: []
+      });
     } catch (error) {
-      setError(error.message);
+      setError('Erro ao adicionar acessório: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteColor = (indexToDelete) => {
-    setNewAccessory((prev) => ({
-      ...prev,
-      colors: prev.colors.filter((_, index) => index !== indexToDelete),
-    }));
+  const handleDeleteAccessory = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir este acessório?')) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('accessories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setAccessories(prev => prev.filter(acc => acc.id !== id));
+    } catch (error) {
+      setError('Erro ao excluir acessório: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  if (loading && !accessories.length) {
+    return <div className="loading">Carregando...</div>;
+  }
 
   return (
-    <div>
-      <h2>Acessórios</h2>
-      <form onSubmit={handleAddAccessory}>
+    <div className="accessories-container">
+      <h2>Gerenciar Acessórios</h2>
+      
+      {error && <div className="error-message">{error}</div>}
+
+      <form className="accessories-form" onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="produto">Produto:</label>
-          <SelectOrCreate
-            id="produto"
-            name="produto"
-            options={produtos}
-            labelKey="nome"
-            valueKey="id"
-            onChange={handleProdutoChange}
-            onCreate={async (newProdutoName) => {
-              try {
-                const { data, error } = await supabase
-                  .from('produtos')
-                  .insert([{ nome: newProdutoName }])
-                  .select();
-                if (error) throw error;
-                setProdutos([...produtos, data[0]]);
-                return data[0];
-              } catch (error) {
-                setError(error.message);
-                return null;
-              }
-            }}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="measurement_mm">Medida (MM):</label>
-          <SelectOrCreate
-            id="measurement_mm"
-            name="measurement_mm"
-            options={medidas}
-            labelKey="medida"
-            valueKey="id"
-            onChange={handleMedidaChange}
-            onCreate={async (newMedidaValue) => {
-              try {
-                const { data, error } = await supabase
-                  .from('medidas')
-                  .insert([{ medida: newMedidaValue }])
-                  .select();
-                if (error) throw error;
-                setMedidas([...medidas, data[0]]);
-                return data[0];
-              } catch (error) {
-                setError(error.message);
-                return null;
-              }
-            }}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="unit">Unidade:</label>
+          <label>Nome do Acessório:</label>
           <input
             type="text"
-            id="unit"
+            name="name"
+            value={newAccessory.name}
+            onChange={handleInputChange}
+            placeholder="Nome do acessório"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Unidade:</label>
+          <input
+            type="text"
             name="unit"
             value={newAccessory.unit}
             onChange={handleInputChange}
+            placeholder="Ex: metro, peça, etc."
           />
         </div>
 
-        <div>
-          <h3>Cores:</h3>
+        <div className="colors-section">
+          <h3>Cores</h3>
           <div className="form-group">
-            <label htmlFor="color">Cor:</label>
+            <label>Cor:</label>
             <input
               type="text"
-              id="color"
               name="color"
               value={newColor.color}
               onChange={handleColorInputChange}
+              placeholder="Nome da cor"
             />
           </div>
+
           <div className="form-group">
-            <label htmlFor="price">Preço:</label>
+            <label>Preço:</label>
             <input
               type="number"
-              id="price"
               name="price"
               value={newColor.price}
               onChange={handleColorInputChange}
+              step="0.01"
+              min="0"
             />
           </div>
-          <button type="button" onClick={handleAddColor}>
+
+          <button type="button" className="button" onClick={handleAddColor}>
             Adicionar Cor
           </button>
-          <ul>
+
+          <ul className="color-list">
             {newAccessory.colors.map((color, index) => (
-              <li key={index}>
+              <li key={index} className="color-item">
                 {color.color} - R$ {color.price.toFixed(2)}
-                <button type="button" onClick={() => handleDeleteColor(index)}>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => handleDeleteColor(index)}
+                >
                   Remover
                 </button>
               </li>
@@ -251,34 +231,36 @@ function Accessories({ accessories, setAccessories }) {
           </ul>
         </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Adicionando...' : 'Adicionar Acessório'}
+        <button type="submit" className="button" disabled={loading}>
+          {loading ? 'Salvando...' : 'Salvar Acessório'}
         </button>
       </form>
 
-      <ul>
-        {accessories.map((accessory) => {
-          try {
-            const produto = produtos.find((p) => p.id === accessory.produto);
-            const produtoName = produto ? produto.nome : 'Unknown Product';
-
-            return (
-              <li key={accessory.id}>
-                Produto: {produtoName}, Medida: {accessory.measurement_mm},
-                Unidade: {accessory.unit}, Cores:{' '}
-                {accessory.colors && accessory.colors.map((color) => (
-                  <span key={color.color}>
-                    {color.color} (R$ {color.price && color.price.toFixed(2)}){' '}
-                  </span>
+      <div className="accessories-list">
+        <h3>Acessórios Cadastrados</h3>
+        {accessories.map(accessory => (
+          <div key={accessory.id} className="accessory-item">
+            <h4>{accessory.name}</h4>
+            <p>Unidade: {accessory.unit}</p>
+            <div>
+              <strong>Cores:</strong>
+              <ul>
+                {accessory.colors.map((color, index) => (
+                  <li key={index}>
+                    {color.color} - R$ {color.price.toFixed(2)}
+                  </li>
                 ))}
-              </li>
-            );
-          } catch (e) {
-            console.error("Error rendering accessory:", accessory, e);
-            return null;
-          }
-        })}
-      </ul>
+              </ul>
+            </div>
+            <button
+              className="button"
+              onClick={() => handleDeleteAccessory(accessory.id)}
+            >
+              Excluir
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
