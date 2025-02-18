@@ -87,6 +87,8 @@
   padding: 12px;
   text-align: left;
   border-bottom: 2px solid #dee2e6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .items-section td {
@@ -166,17 +168,39 @@
   background-color: #1976D2;
 }
 
+/* Print styles */
 @media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .budget-print-layout,
+  .budget-print-layout * {
+    visibility: visible;
+  }
+  
+  .budget-print-layout {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+  
   .action-buttons {
     display: none;
   }
-
-  .budget-print-layout {
-    box-shadow: none;
-    padding: 0;
+  
+  .app-header,
+  .app-footer {
+    display: none;
   }
-
+  
   .budget-details-container {
     padding: 0;
+    margin: 0;
+    max-width: none;
   }
 }

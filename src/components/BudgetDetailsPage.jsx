@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -11,11 +11,11 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     const loadBudgetDetails = async () => {
       try {
-        // Fetch budget with customer data
         const { data: budgetData, error: budgetError } = await supabase
           .from('orcamentos')
           .select(`
@@ -33,7 +33,6 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
         if (budgetError) throw budgetError;
 
-        // Fetch all products to get their details
         const { data: productsData, error: productsError } = await supabase
           .from('produtos')
           .select('*');
@@ -52,10 +51,6 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
 
     loadBudgetDetails();
   }, [budgetId]);
-
-  if (loading) return <p>Carregando...</p>;
-  if (error) return <p>Erro: {error}</p>;
-  if (!budget) return <p>Orçamento não encontrado.</p>;
 
   const formatCurrency = (value) => {
     return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -85,11 +80,126 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
     return description;
   };
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    // Add red header lines
+    doc.setDrawColor(190, 0, 0);
+    doc.setLineWidth(1);
+    doc.line(20, 15, 190, 15);
+    doc.line(20, 45, 190, 45);
+    
+    // Add company logo text in red
+    doc.setTextColor(190, 0, 0);
+    doc.setFontSize(28);
+    doc.text('PersiFIX', 30, 35);
+    doc.setFontSize(11);
+    doc.text('Cortinas e Persianas', 30, 41);
+    
+    // Reset text color to black
+    doc.setTextColor(0, 0, 0);
+    
+    // Add company info aligned to the right
+    doc.setFontSize(10);
+    const companyInfo = [
+      'Ultracred',
+      'CNPJ: 13.601.392/0001-96',
+      'av paulista',
+      'Tel.: 1533333840'
+    ];
+    
+    // Right align company info
+    companyInfo.forEach((text, index) => {
+      const textWidth = doc.getStringUnitWidth(text) * 10 / doc.internal.scaleFactor;
+      doc.text(text, 190 - textWidth, 25 + (index * 5));
+    });
+    
+    // Add dates with proper spacing
+    doc.text(`Data do Orçamento: ${new Date(budget.created_at).toLocaleDateString()}`, 20, 70);
+    const validadeText = `Válido até: ${new Date(new Date(budget.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}`;
+    const validadeWidth = doc.getStringUnitWidth(validadeText) * 10 / doc.internal.scaleFactor;
+    doc.text(validadeText, 190 - validadeWidth, 70);
+    
+    // Add Cliente section with border
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.1);
+    doc.rect(20, 80, 170, 35);
+    
+    // Add Cliente title
+    doc.setFontSize(12);
+    doc.setTextColor(60, 60, 60);
+    doc.text('Cliente', 25, 90);
+    
+    // Add client info
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text([
+      `Nome: ${budget.clientes?.name || 'Cliente não encontrado'}`,
+      `Endereço: ${budget.clientes?.address || ''}`,
+      `Telefone: ${budget.clientes?.phone || ''}`
+    ], 25, 100);
+    
+    // Add Itens do Orçamento section with border
+    doc.setDrawColor(220, 220, 220);
+    doc.rect(20, 125, 170, 50);
+    
+    // Add items table with proper styling
+    const budgetProducts = JSON.parse(budget.produtos_json || '[]');
+    if (budgetProducts.length > 0) {
+      doc.autoTable({
+        startY: 125,
+        head: [['Descrição', 'Total']],
+        body: budgetProducts.map(item => [
+          formatProductDescription({}, item),
+          formatCurrency(item.subtotal)
+        ]),
+        theme: 'plain',
+        headStyles: {
+          fillColor: [245, 245, 245],
+          textColor: [60, 60, 60],
+          fontSize: 11,
+          fontStyle: 'bold',
+          cellPadding: { top: 8, right: 8, bottom: 8, left: 8 }
+        },
+        bodyStyles: {
+          fontSize: 10,
+          cellPadding: { top: 6, right: 8, bottom: 6, left: 8 },
+          textColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 40, halign: 'right' }
+        },
+        styles: {
+          lineColor: [220, 220, 220],
+          lineWidth: 0.1
+        },
+        margin: { left: 20, right: 20 },
+        tableWidth: 170
+      });
+      
+      // Add final total with border
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(20, finalY - 5, 170, 20);
+      const totalText = `Total: ${formatCurrency(budget.valor_total)}`;
+      const totalWidth = doc.getStringUnitWidth(totalText) * 10 / doc.internal.scaleFactor;
+      doc.text(totalText, 190 - totalWidth, finalY + 7);
+    }
+    
+    // Save the PDF
+    doc.save(`orcamento_${budgetId}.pdf`);
+  };
+
+  if (loading) return <p>Carregando...</p>;
+  if (error) return <p>Erro: {error}</p>;
+  if (!budget) return <p>Orçamento não encontrado.</p>;
+
   const budgetProducts = JSON.parse(budget.produtos_json || '[]');
 
   return (
     <div className="budget-details-container">
-      <div className="budget-print-layout">
+      <div className="budget-print-layout" ref={contentRef}>
         <div className="header-section">
           <div className="logo-section">
             {companyLogo ? (
@@ -151,19 +261,16 @@ function BudgetDetailsPage({ budgets, companyLogo }) {
               <p>Total: {formatCurrency(budget.valor_total)}</p>
             </div>
           </section>
-
-          {budget.observacao && (
-            <section className="observations-section">
-              <h3>Observações</h3>
-              <p>{budget.observacao}</p>
-            </section>
-          )}
         </div>
       </div>
 
       <div className="action-buttons">
-        <button onClick={() => window.print()} className="print-button">Imprimir</button>
-        <button className="download-pdf-button">Download PDF</button>
+        <button onClick={() => window.print()} className="print-button">
+          Imprimir
+        </button>
+        <button onClick={generatePDF} className="download-pdf-button">
+          Download PDF
+        </button>
       </div>
     </div>
   );
