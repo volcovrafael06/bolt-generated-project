@@ -28,77 +28,73 @@ function App() {
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
 
-  // Fetch initial data
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch customers
-      const { data: customersData, error: customersError } = await supabase
-        .from('clientes')
-        .select('*');
-      if (customersError) throw customersError;
-      setCustomers(customersData || []);
-
-      // Fetch products
-      const { data: productsData, error: productsError } = await supabase
-        .from('produtos')
-        .select('*');
-      if (productsError) throw productsError;
-      setProducts(productsData || []);
-
-      // Fetch accessories
-      const { data: accessoriesData, error: accessoriesError } = await supabase
-        .from('accessories')
-        .select('*');
-      if (accessoriesError) throw accessoriesError;
-      setAccessories(accessoriesData || []);
-
-      // Fetch budgets
-      const { data: budgetsData, error: budgetsError } = await supabase
-        .from('orcamentos')
-        .select('*');
-      if (budgetsError) throw budgetsError;
-      setBudgets(budgetsData || []);
-
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = (user) => {
+  const handleLogin = (user, initialData) => {
     setLoggedInUser(user);
+    
+    // Update all state with initial data
+    if (initialData) {
+      if (initialData.config) {
+        setCompanyLogo(initialData.config.company_logo);
+        setValidadeOrcamento(initialData.config.validade_orcamento.toString());
+      }
+      setCustomers(initialData.customers || []);
+      setProducts(initialData.products || []);
+      setAccessories(initialData.accessories || []);
+      setBudgets(initialData.budgets || []);
+    }
+    
     navigate("/");
   };
 
   const handleLogout = () => {
     setLoggedInUser(null);
+    // Clear all data states
+    setCustomers([]);
+    setProducts([]);
+    setAccessories([]);
+    setBudgets([]);
+    setCompanyLogo(null);
+    setValidadeOrcamento('30');
     navigate("/login");
   };
 
-  const handleFinalizeBudget = (budgetId) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
-    );
-    setBudgets(updatedBudgets);
+  const handleFinalizeBudget = async (budgetId) => {
+    try {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .update({ status: 'finalizado' })
+        .eq('id', budgetId)
+        .select();
+
+      if (error) throw error;
+
+      setBudgets(prev => prev.map(budget =>
+        budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+      ));
+    } catch (error) {
+      console.error('Error finalizing budget:', error);
+    }
   };
 
-  const handleCancelBudget = (budgetId) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
-    );
-    setBudgets(updatedBudgets);
+  const handleCancelBudget = async (budgetId) => {
+    try {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .update({ status: 'cancelado' })
+        .eq('id', budgetId)
+        .select();
+
+      if (error) throw error;
+
+      setBudgets(prev => prev.map(budget =>
+        budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
+      ));
+    } catch (error) {
+      console.error('Error canceling budget:', error);
+    }
   };
 
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
+  // Rest of your App component code remains the same...
 
   return (
     <div className="app">
