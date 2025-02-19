@@ -23,15 +23,29 @@ function Accessories() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single();
-        setUserProfile(profile);
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          setError('Erro ao carregar perfil do usuário.');
+          return;
+        }
+
+        if (profile) {
+          setUserProfile(profile);
+        } else {
+          setError('Perfil de usuário não encontrado.');
+        }
+      } else {
+        setError('Usuário não autenticado.');
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setError('Erro ao carregar perfil do usuário: ' + error.message);
     }
   };
 
