@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
 import './Accessories.css';
+import { v4 as uuidv4 } from 'uuid';
 
 function Accessories() {
   const [accessories, setAccessories] = useState([]);
@@ -12,51 +13,42 @@ function Accessories() {
   const [newColor, setNewColor] = useState({ color: '', price: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
+  const [organizationId, setOrganizationId] = useState(null);
 
   useEffect(() => {
-    fetchUserProfile();
-    fetchAccessories();
+    // Fetch the organization ID directly (replace with your actual logic)
+    const fetchOrganizationId = async () => {
+      // Assuming you have a way to determine the organization ID, e.g., from a config file or environment variable
+      // For now, I'll hardcode it, but you should replace this with your actual logic
+      // const hardcodedOrganizationId = 'your_organization_id'; // Replace with your actual organization ID
+      const hardcodedOrganizationId = uuidv4();
+
+      // Simulate fetching the organization ID (replace with your actual logic)
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate a network request
+
+      setOrganizationId(hardcodedOrganizationId);
+    };
+
+    fetchOrganizationId();
   }, []);
 
-  const fetchUserProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          setError('Erro ao carregar perfil do usuário.');
-          return;
-        }
-
-        if (profile) {
-          setUserProfile(profile);
-        } else {
-          setError('Perfil de usuário não encontrado.');
-        }
-      } else {
-        setError('Usuário não autenticado.');
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setError('Erro ao carregar perfil do usuário: ' + error.message);
+  useEffect(() => {
+    if (organizationId) {
+      fetchAccessories();
     }
-  };
+  }, [organizationId]);
 
   const fetchAccessories = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('accessories')
-        .select('*');
+        .select('*')
+        .eq('organization_id', organizationId);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
       setAccessories(data || []);
     } catch (error) {
       setError('Erro ao carregar acessórios: ' + error.message);
@@ -86,7 +78,7 @@ function Accessories() {
       setError('Cor inválida ou preço negativo');
       return;
     }
-    
+
     setNewAccessory(prev => ({
       ...prev,
       colors: [...prev.colors, newColor]
@@ -106,13 +98,12 @@ function Accessories() {
     if (!newAccessory.name.trim()) return 'Digite o nome do acessório';
     if (!newAccessory.unit.trim()) return 'Digite uma unidade';
     if (newAccessory.colors.length === 0) return 'Adicione pelo menos uma cor';
-    if (!userProfile?.organization_id) return 'Perfil de usuário não encontrado';
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validationError = validateAccessory();
     if (validationError) {
       setError(validationError);
@@ -129,7 +120,8 @@ function Accessories() {
           name: newAccessory.name,
           unit: newAccessory.unit,
           colors: newAccessory.colors,
-          organization_id: userProfile.organization_id
+          organization_id: organizationId,
+          // created_by: authService.getCurrentUser().id // Assuming you have user ID - REMOVED AUTH
         }])
         .select();
 
@@ -167,15 +159,17 @@ function Accessories() {
     }
   };
 
-  if (loading && !accessories.length) {
+  if (loading) {
     return <div className="loading">Carregando...</div>;
+  }
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
   }
 
   return (
     <div className="accessories-container">
       <h2>Gerenciar Acessórios</h2>
-      
-      {error && <div className="error-message">{error}</div>}
 
       <form className="accessories-form" onSubmit={handleSubmit}>
         <div className="form-group">

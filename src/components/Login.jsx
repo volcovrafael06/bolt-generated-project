@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { authService } from '../services/authService';
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -6,19 +7,19 @@ function Login({ onLogin }) {
   const [loginError, setLoginError] = useState('');
 
   const handleLogin = () => {
-    if (username === 'admin' && password === 'admin') {
-      onLogin('admin');
-      setLoginError(''); // Clear any previous error message
-    } else if (username === 'vendedor' && password === 'vendedor') {
-      onLogin('vendedor');
-      setLoginError(''); // Clear any previous error message
-    } else {
-      setLoginError('Credenciais inválidas');
-    }
-  };
-
-  const handleLogout = () => {
-    onLogin(null);
+    authService.login(username, password)
+      .then(user => {
+        if (user) {
+          onLogin(user);
+          setLoginError('');
+        } else {
+          setLoginError('Credenciais inválidas');
+        }
+      })
+      .catch(error => {
+        console.error("Login failed:", error);
+        setLoginError('Erro ao fazer login. Tente novamente.');
+      });
   };
 
   return (
@@ -44,7 +45,6 @@ function Login({ onLogin }) {
         />
       </div>
       <button onClick={handleLogin}>Entrar</button>
-      <button onClick={handleLogout}>Sair</button>
     </div>
   );
 }

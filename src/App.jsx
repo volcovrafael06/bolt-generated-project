@@ -15,6 +15,7 @@ import HomePage from './components/HomePage';
 import Dashboard from './components/Dashboard';
 import { supabase } from './supabase/client';
 import TestDB from './components/TestDB';
+import { authService } from './services/authService';
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -23,7 +24,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [accessories, setAccessories] = useState([]);
   const [budgets, setBudgets] = useState([]);
-  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [loggedInUser, setLoggedInUser] = useState(authService.getCurrentUser());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
@@ -78,6 +79,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    authService.logout();
     setLoggedInUser(null);
     navigate("/login");
   };
@@ -113,7 +115,7 @@ function App() {
             {loggedInUser ? (
               <>
                 <li><NavLink to="/" end>Home</NavLink></li>
-                {loggedInUser === 'admin' && (
+                {loggedInUser.accessLevel === 'admin' && (
                   <>
                     <li><NavLink to="/customers">Clientes</NavLink></li>
                     <li><NavLink to="/products">Produtos</NavLink></li>
@@ -123,7 +125,7 @@ function App() {
                     <li><NavLink to="/configuracoes">Configurações</NavLink></li>
                   </>
                 )}
-                {loggedInUser === 'vendedor' && (
+                {loggedInUser.accessLevel !== 'admin' && (
                   <>
                     <li><NavLink to="/budgets">Orçamentos</NavLink></li>
                   </>
@@ -164,28 +166,40 @@ function App() {
           <Route 
             path="/customers" 
             element={
-              <Customers 
-                customers={customers} 
-                setCustomers={setCustomers} 
-              />
+              authService.hasAccess('admin') ? (
+                <Customers 
+                  customers={customers} 
+                  setCustomers={setCustomers} 
+                />
+              ) : (
+                <div>Acesso negado.</div>
+              )
             } 
           />
           <Route 
             path="/products" 
             element={
-              <Products 
-                products={products} 
-                setProducts={setProducts} 
-              />
+              authService.hasAccess('admin') ? (
+                <Products 
+                  products={products} 
+                  setProducts={setProducts} 
+                />
+              ) : (
+                <div>Acesso negado.</div>
+              )
             } 
           />
           <Route 
             path="/accessories" 
             element={
-              <Accessories 
-                accessories={accessories} 
-                setAccessories={setAccessories} 
-              />
+              authService.hasAccess('admin') ? (
+                <Accessories 
+                  accessories={accessories} 
+                  setAccessories={setAccessories} 
+                />
+              ) : (
+                <div>Acesso negado.</div>
+              )
             } 
           />
           <Route 
@@ -238,15 +252,28 @@ function App() {
               />
             } 
           />
-          <Route path="/reports" element={<Reports />} />
+          <Route 
+            path="/reports" 
+            element={
+              authService.hasAccess('admin') ? (
+                <Reports />
+              ) : (
+                <div>Acesso negado.</div>
+              )
+            } 
+          />
           <Route 
             path="/configuracoes" 
             element={
-              <Configuracoes 
-                setCompanyLogo={setCompanyLogo} 
-                setValidadeOrcamento={setValidadeOrcamento} 
-                validadeOrcamento={validadeOrcamento} 
-              />
+              authService.hasAccess('admin') ? (
+                <Configuracoes 
+                  setCompanyLogo={setCompanyLogo} 
+                  setValidadeOrcamento={setValidadeOrcamento} 
+                  validadeOrcamento={validadeOrcamento} 
+                />
+              ) : (
+                <div>Acesso negado.</div>
+              )
             } 
           />
           <Route path="/test-db" element={<TestDB />} />
