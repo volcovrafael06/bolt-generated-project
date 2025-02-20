@@ -11,7 +11,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const [newBudget, setNewBudget] = useState({
     customer: null,
-    products: [], 
+    products: [],
     accessories: [],
     observation: '',
     totalValue: 0
@@ -28,12 +28,19 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     subtotal: 0
   });
 
+  const [currentAccessory, setCurrentAccessory] = useState({
+    accessory: null,
+    color: '',
+    quantity: 1,
+    subtotal: 0
+  });
+
   const [localCustomers, setLocalCustomers] = useState([]);
   const [products, setProducts] = useState(initialProducts || []);
   const [accessoriesList, setAccessoriesList] = useState(initialAccessories || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState({ customer: '', product: '' });
+  const [searchTerm, setSearchTerm] = useState({ customer: '', product: '', accessory: '' });
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -42,7 +49,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
           .from('clientes')
           .select('*')
           .order('name');
-          
+
         if (error) throw error;
         setLocalCustomers(data || []);
         updateParentCustomers?.(data || []); // Update parent state if callback exists
@@ -69,7 +76,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       fetchProducts();
       fetchAccessories();
     }
-    
+
     // If editing, load the budget data
     if (isEditing && budgetId && budgets) {
       const budget = budgets.find(b => b.id === parseInt(budgetId));
@@ -77,14 +84,14 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         const customer = localCustomers.find(c => c.id === budget.cliente_id);
         let products = [];
         let accessories = [];
-        
+
         try {
           products = JSON.parse(budget.produtos_json || '[]');
           accessories = JSON.parse(budget.acessorios_json || '[]');
         } catch (e) {
           console.error('Error parsing budget data:', e);
         }
-        
+
         setNewBudget({
           customer,
           products,
@@ -99,6 +106,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   useEffect(() => {
     calculateProductSubtotal();
   }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
+
+  useEffect(() => {
+    calculateAccessorySubtotal();
+  }, [currentAccessory.accessory, currentAccessory.color, currentAccessory.quantity]);
 
   useEffect(() => {
     const loadBudgets = async () => {
@@ -180,10 +191,30 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     setCurrentProduct(prev => ({ ...prev, subtotal }));
   };
 
+  const calculateAccessorySubtotal = () => {
+    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) return;
+
+    const quantity = parseInt(currentAccessory.quantity, 10) || 1;
+    const color = currentAccessory.accessory.colors.find(c => c.color === currentAccessory.color);
+
+    if (!color) {
+      setCurrentAccessory(prev => ({ ...prev, subtotal: 0 }));
+      return;
+    }
+
+    const subtotal = quantity * color.price;
+    setCurrentAccessory(prev => ({ ...prev, subtotal }));
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
     setCurrentProduct(prev => ({ ...prev, [name]: newValue }));
+  };
+
+  const handleAccessoryInputChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentAccessory(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCustomerChange = (selectedCustomer) => {
@@ -197,7 +228,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .insert([{ 
+        .insert([{
           name,
           email: '',
           phone: '',
@@ -208,7 +239,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         .single();
 
       if (error) throw error;
-      
+
       setLocalCustomers(prev => [...prev, data]);
       updateParentCustomers?.(prev => [...prev, data]); // Update parent state if callback exists
       return data;
@@ -233,6 +264,16 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }));
   };
 
+  const handleAccessoryChange = (selectedAccessory) => {
+    setCurrentAccessory(prev => ({
+      ...prev,
+      accessory: selectedAccessory,
+      color: '',
+      quantity: 1,
+      subtotal: 0
+    }));
+  };
+
   const handleAddProduct = () => {
     if (!currentProduct.product || !currentProduct.width) {
       setError("Por favor, preencha todos os campos do produto.");
@@ -241,7 +282,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
     // Add the new product
     const updatedProducts = [...newBudget.products, { ...currentProduct }];
-    
+
     // Calculate new total
     const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
 
@@ -268,7 +309,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   const handleRemoveProduct = (index) => {
     const updatedProducts = newBudget.products.filter((_, i) => i !== index);
     const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
-    
+
     setNewBudget(prev => ({
       ...prev,
       products: updatedProducts,
@@ -276,16 +317,50 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }));
   };
 
+  const handleAddAccessory = () => {
+    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) {
+      setError("Por favor, preencha todos os campos do acessório.");
+      return;
+    }
+
+    const updatedAccessories = [...newBudget.accessories, { ...currentAccessory }];
+    const newTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), newBudget.totalValue);
+
+    setNewBudget(prev => ({
+      ...prev,
+      accessories: updatedAccessories,
+      totalValue: newTotal
+    }));
+
+    setCurrentAccessory({
+      accessory: null,
+      color: '',
+      quantity: 1,
+      subtotal: 0
+    });
+  };
+
+  const handleRemoveAccessory = (index) => {
+    const updatedAccessories = newBudget.accessories.filter((_, i) => i !== index);
+    const newTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+
+    setNewBudget(prev => ({
+      ...prev,
+      accessories: updatedAccessories,
+      totalValue: newTotal
+    }));
+  };
+
   const handleFinalizeBudget = async (e) => {
     e.preventDefault();
-    
+
     if (!newBudget.customer) {
       setError("Por favor, selecione um cliente.");
       return;
     }
 
-    if (newBudget.products.length === 0) {
-      setError("Por favor, adicione pelo menos um produto.");
+    if (newBudget.products.length === 0 && newBudget.accessories.length === 0) {
+      setError("Por favor, adicione pelo menos um produto ou acessório.");
       return;
     }
 
@@ -305,12 +380,19 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         subtotal: product.subtotal
       }));
 
+      const cleanAccessories = newBudget.accessories.map(accessory => ({
+        accessory_id: accessory.accessory.id,
+        color: accessory.color,
+        quantity: parseInt(accessory.quantity, 10),
+        subtotal: accessory.subtotal
+      }));
+
       const budgetData = {
         cliente_id: newBudget.customer.id,
         valor_total: newBudget.totalValue,
         produtos_json: JSON.stringify(cleanProducts),
         observacao: newBudget.observation || '',
-        acessorios_json: JSON.stringify(newBudget.accessories || [])
+        acessorios_json: JSON.stringify(cleanAccessories)
       };
 
       console.log('Saving budget with data:', budgetData);
@@ -339,7 +421,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         }
         result = data;
 
-        setBudgets(prev => prev.map(b => 
+        setBudgets(prev => prev.map(b =>
           b.id === parseInt(budgetId) ? { ...b, ...result } : b
         ));
       } else {
@@ -387,6 +469,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     product.codigo?.toLowerCase().includes(searchTerm.product.toLowerCase())
   );
 
+  const filteredAccessories = accessoriesList.filter(accessory =>
+    accessory.name?.toLowerCase().includes(searchTerm.accessory.toLowerCase())
+  );
+
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>Erro: {error}</p>;
 
@@ -412,7 +498,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         {/* Produtos Section */}
         <div className="form-section">
           <h3>Produtos</h3>
-          
+
           {/* Lista de produtos já adicionados */}
           {newBudget.products.length > 0 && (
             <div className="added-products">
@@ -430,8 +516,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
                     <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
                   </div>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="remove-button"
                     onClick={() => handleRemoveProduct(index)}
                   >
@@ -494,7 +580,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     />
                     Bandô
                   </label>
-                  
+
                   <label>
                     <input
                       type="checkbox"
@@ -521,12 +607,105 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                   <p>Subtotal do produto: R$ {currentProduct.subtotal.toFixed(2)}</p>
                 )}
 
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="add-product-button"
                   onClick={handleAddProduct}
                 >
                   Adicionar Produto
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Acessórios Section */}
+        <div className="form-section">
+          <h3>Acessórios</h3>
+
+          {/* Lista de acessórios já adicionados */}
+          {newBudget.accessories.length > 0 && (
+            <div className="added-accessories">
+              <h4>Acessórios Adicionados ({newBudget.accessories.length})</h4>
+              <div className="accessories-summary">
+                <p>Total de acessórios: {newBudget.accessories.length}</p>
+                <p>Valor total dos acessórios: R$ {newBudget.totalValue.toFixed(2)}</p>
+              </div>
+              {newBudget.accessories.map((acc, index) => (
+                <div key={index} className="added-accessory-item">
+                  <div className="accessory-info">
+                    <p><strong>{acc.accessory.name}</strong></p>
+                    <p>Cor: {acc.color}</p>
+                    <p>Quantidade: {acc.quantity}</p>
+                    <p className="accessory-subtotal">Subtotal: R$ {acc.subtotal.toFixed(2)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="remove-button"
+                    onClick={() => handleRemoveAccessory(index)}
+                  >
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Adicionar novo acessório */}
+          <div className="add-accessory">
+            <h4>Adicionar Acessório</h4>
+            <input
+              type="text"
+              placeholder="Pesquisar acessório..."
+              value={searchTerm.accessory}
+              onChange={(e) => setSearchTerm(prev => ({ ...prev, accessory: e.target.value }))}
+            />
+            <SelectOrCreate
+              options={filteredAccessories}
+              value={currentAccessory.accessory}
+              onChange={handleAccessoryChange}
+              labelKey="name"
+              valueKey="id"
+              onCreate={fetchAccessories}
+              showCreate={false}
+            />
+
+            {currentAccessory.accessory && (
+              <>
+                <div className="accessory-options">
+                  <select
+                    name="color"
+                    value={currentAccessory.color}
+                    onChange={handleAccessoryInputChange}
+                  >
+                    <option value="" disabled>Selecione a cor</option>
+                    {currentAccessory.accessory.colors.map((color, index) => (
+                      <option key={index} value={color.color}>
+                        {color.color}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    name="quantity"
+                    value={currentAccessory.quantity}
+                    onChange={handleAccessoryInputChange}
+                    placeholder="Quantidade"
+                    min="1"
+                  />
+                </div>
+
+                {currentAccessory.subtotal > 0 && (
+                  <p>Subtotal do acessório: R$ {currentAccessory.subtotal.toFixed(2)}</p>
+                )}
+
+                <button
+                  type="button"
+                  className="add-accessory-button"
+                  onClick={handleAddAccessory}
+                >
+                  Adicionar Acessório
                 </button>
               </>
             )}
