@@ -71,83 +71,101 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   }, [initialAccessories]);
 
   useEffect(() => {
-    if (!initialCustomers || !initialProducts || !initialAccessories) {
-      fetchCustomers();
-      fetchProducts();
-      fetchAccessories();
-    }
-
-    // If editing, load the budget data
-    if (isEditing && budgetId && budgets) {
-      const budget = budgets.find(b => b.id === parseInt(budgetId));
-      if (budget) {
-        const customer = localCustomers.find(c => c.id === budget.cliente_id);
-        let products = [];
-        let accessories = [];
-
-        try {
-          products = JSON.parse(budget.produtos_json || '[]');
-          accessories = JSON.parse(budget.acessorios_json || '[]');
-        } catch (e) {
-          console.error('Error parsing budget data:', e);
-        }
-
-        setNewBudget({
-          customer,
-          products,
-          accessories,
-          observation: budget.observacao || '',
-          totalValue: budget.valor_total || 0
-        });
-      }
-    }
-  }, [isEditing, budgetId, budgets, localCustomers, products, initialCustomers, initialProducts, initialAccessories]);
-
-  useEffect(() => {
-    calculateProductSubtotal();
-  }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
-
-  useEffect(() => {
-    calculateAccessorySubtotal();
-  }, [currentAccessory.accessory, currentAccessory.color, currentAccessory.quantity]);
-
-  useEffect(() => {
-    const loadBudgets = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('orcamentos')
-          .select(`
-            *,
-            clientes (
-              id,
-              name,
-              email,
-              phone,
-              address
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setBudgets(data || []);
-      } catch (error) {
-        console.error('Error loading budgets:', error);
-        setError('Erro ao carregar orçamentos');
-      }
-    };
-
-    loadBudgets();
-  }, [setBudgets]);
-
-  useEffect(() => {
     const loadInitialData = async () => {
-      if (!accessoriesList.length) {
-        await fetchAccessories();
+      if (!initialCustomers || !initialProducts || !initialAccessories) {
+        await Promise.all([
+          fetchCustomers(),
+          fetchProducts(),
+          fetchAccessories()
+        ]);
       }
     };
-    
+
     loadInitialData();
-  }, []); // Run once on component mount
+  }, [initialCustomers, initialProducts, initialAccessories]);
+
+  useEffect(() => {
+    if (isEditing && budgetId) {
+      const loadBudgetData = async () => {
+        try {
+          console.log('Loading budget for editing:', budgetId);
+          
+          // Buscar o orçamento diretamente do Supabase
+          const { data: budget, error } = await supabase
+            .from('orcamentos')
+            .select(`
+              *,
+              clientes (
+                id,
+                name,
+                email,
+                phone,
+                address
+              )
+            `)
+            .eq('id', budgetId)
+            .single();
+
+          if (error) throw error;
+          
+          console.log('Loaded budget:', budget);
+          
+          let products = [];
+          let accessories = [];
+
+          try {
+            products = JSON.parse(budget.produtos_json || '[]');
+            accessories = JSON.parse(budget.acessorios_json || '[]');
+            
+            // Adicionar informações completas dos produtos
+            products = products.map(p => {
+              const fullProduct = initialProducts?.find(prod => prod.id === p.produto_id) || {};
+              return {
+                product: fullProduct,
+                width: p.largura || '',
+                height: p.altura || '',
+                bando: p.bando || false,
+                bandoValue: p.valor_bando || 0,
+                installation: p.instalacao || false,
+                installationValue: p.valor_instalacao || 0,
+                subtotal: p.subtotal || 0
+              };
+            });
+
+            // Adicionar informações completas dos acessórios
+            accessories = accessories.map(a => {
+              const fullAccessory = initialAccessories?.find(acc => acc.id === a.accessory_id) || {};
+              return {
+                accessory: fullAccessory,
+                color: a.color || '',
+                quantity: a.quantity || 1,
+                subtotal: a.subtotal || 0
+              };
+            });
+
+          } catch (e) {
+            console.error('Error parsing budget data:', e);
+          }
+
+          console.log('Processed products:', products);
+          console.log('Processed accessories:', accessories);
+
+          setNewBudget({
+            customer: budget.clientes,
+            products,
+            accessories,
+            observation: budget.observacao || '',
+            totalValue: budget.valor_total || 0
+          });
+        } catch (error) {
+          console.error('Error loading budget:', error);
+          setError('Erro ao carregar orçamento');
+        }
+      };
+
+      loadBudgetData();
+    }
+  }, [isEditing, budgetId, initialProducts, initialAccessories]);
 
   const fetchProducts = async () => {
     try {
