@@ -13,30 +13,10 @@ function Accessories() {
   const [newColor, setNewColor] = useState({ color: '', price: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [organizationId, setOrganizationId] = useState(null);
 
   useEffect(() => {
-    // Fetch the organization ID directly (replace with your actual logic)
-    const fetchOrganizationId = async () => {
-      // Assuming you have a way to determine the organization ID, e.g., from a config file or environment variable
-      // For now, I'll hardcode it, but you should replace this with your actual logic
-      // const hardcodedOrganizationId = 'your_organization_id'; // Replace with your actual organization ID
-      const hardcodedOrganizationId = uuidv4();
-
-      // Simulate fetching the organization ID (replace with your actual logic)
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate a network request
-
-      setOrganizationId(hardcodedOrganizationId);
-    };
-
-    fetchOrganizationId();
+    fetchAccessories();
   }, []);
-
-  useEffect(() => {
-    if (organizationId) {
-      fetchAccessories();
-    }
-  }, [organizationId]);
 
   const fetchAccessories = async () => {
     setLoading(true);
@@ -44,13 +24,16 @@ function Accessories() {
       const { data, error } = await supabase
         .from('accessories')
         .select('*')
-        .eq('organization_id', organizationId);
+        .order('name');
 
       if (error) {
         throw error;
       }
+
+      console.log('Fetched accessories:', data);
       setAccessories(data || []);
     } catch (error) {
+      console.error('Error fetching accessories:', error);
       setError('Erro ao carregar acessórios: ' + error.message);
     } finally {
       setLoading(false);
@@ -103,7 +86,7 @@ function Accessories() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     const validationError = validateAccessory();
     if (validationError) {
       setError(validationError);
@@ -114,26 +97,36 @@ function Accessories() {
     setError(null);
 
     try {
+      // Prepare the data exactly as the table expects it
+      const accessoryData = {
+        name: newAccessory.name,
+        unit: newAccessory.unit,
+        colors: newAccessory.colors
+      };
+
+      console.log('Inserting accessory:', accessoryData);
+
       const { data, error: insertError } = await supabase
         .from('accessories')
-        .insert([{
-          name: newAccessory.name,
-          unit: newAccessory.unit,
-          colors: newAccessory.colors,
-          organization_id: organizationId,
-          // created_by: authService.getCurrentUser().id // Assuming you have user ID - REMOVED AUTH
-        }])
+        .insert([accessoryData])
         .select();
 
       if (insertError) throw insertError;
 
-      setAccessories(prev => [...prev, ...data]);
+      console.log('Successfully added accessory:', data);
+      
+      // Reset form
       setNewAccessory({
         name: '',
         unit: '',
         colors: []
       });
+      
+      // Refresh the list
+      fetchAccessories();
+      
     } catch (error) {
+      console.error('Error adding accessory:', error);
       setError('Erro ao adicionar acessório: ' + error.message);
     } finally {
       setLoading(false);
@@ -246,22 +239,41 @@ function Accessories() {
 
       <div className="accessories-list">
         <h3>Acessórios Cadastrados</h3>
-        {accessories.map(accessory => (
+        
+        {loading && <p>Carregando acessórios...</p>}
+        
+        {error && (
+          <div className="error-message">
+            {error}
+            <button onClick={fetchAccessories} className="retry-button">
+              Tentar Novamente
+            </button>
+          </div>
+        )}
+        
+        {!loading && !error && accessories.length === 0 && (
+          <p>Nenhum acessório cadastrado ainda.</p>
+        )}
+        
+        {!loading && !error && accessories.map(accessory => (
           <div key={accessory.id} className="accessory-item">
             <h4>{accessory.name}</h4>
             <p>Unidade: {accessory.unit}</p>
             <div>
               <strong>Cores:</strong>
               <ul>
-                {accessory.colors.map((color, index) => (
+                {accessory.colors && accessory.colors.map((color, index) => (
                   <li key={index}>
                     {color.color} - R$ {color.price.toFixed(2)}
                   </li>
                 ))}
+                {(!accessory.colors || accessory.colors.length === 0) && (
+                  <li>Nenhuma cor cadastrada</li>
+                )}
               </ul>
             </div>
             <button
-              className="button"
+              className="button delete-button"
               onClick={() => handleDeleteAccessory(accessory.id)}
             >
               Excluir

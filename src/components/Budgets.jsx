@@ -139,6 +139,16 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     loadBudgets();
   }, [setBudgets]);
 
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (!accessoriesList.length) {
+        await fetchAccessories();
+      }
+    };
+    
+    loadInitialData();
+  }, []); // Run once on component mount
+
   const fetchProducts = async () => {
     try {
       const { data, error } = await supabase.from('produtos').select('*');
@@ -152,12 +162,22 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const fetchAccessories = async () => {
     try {
-      const { data, error } = await supabase.from('accessories').select('*');
+      const { data, error } = await supabase
+        .from('accessories')  // Correct table name from database
+        .select('*')
+        .order('name');      // Add ordering
+      
       if (error) throw error;
-      setAccessoriesList(data || []);
+      
+      if (data) {
+        console.log('Fetched accessories:', data);  // Add logging for debugging
+        setAccessoriesList(data);
+      } else {
+        setAccessoriesList([]);
+      }
     } catch (error) {
       console.error('Error fetching accessories:', error);
-      setError(error.message);
+      setError('Erro ao carregar acessórios');
     }
   };
 
@@ -481,7 +501,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   );
 
   const filteredAccessories = accessoriesList.filter(accessory =>
-    accessory.name?.toLowerCase().includes(searchTerm.accessory.toLowerCase())
+    accessory.name?.toLowerCase().includes((searchTerm.accessory || '').toLowerCase()) ||
+    accessory.description?.toLowerCase().includes((searchTerm.accessory || '').toLowerCase())
   );
 
   const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
