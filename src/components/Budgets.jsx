@@ -284,7 +284,9 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     const updatedProducts = [...newBudget.products, { ...currentProduct }];
 
     // Calculate new total
-    const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+    const newTotal = productsTotal + accessoriesTotal;
 
     // Update budget with new product and total
     setNewBudget(prev => ({
@@ -308,7 +310,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const handleRemoveProduct = (index) => {
     const updatedProducts = newBudget.products.filter((_, i) => i !== index);
-    const newTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+
+    const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+    const newTotal = productsTotal + accessoriesTotal;
 
     setNewBudget(prev => ({
       ...prev,
@@ -324,7 +329,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }
 
     const updatedAccessories = [...newBudget.accessories, { ...currentAccessory }];
-    const newTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), newBudget.totalValue);
+
+    const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    const accessoriesTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+    const newTotal = productsTotal + accessoriesTotal;
 
     setNewBudget(prev => ({
       ...prev,
@@ -342,7 +350,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const handleRemoveAccessory = (index) => {
     const updatedAccessories = newBudget.accessories.filter((_, i) => i !== index);
-    const newTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+
+    const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+    const accessoriesTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+    const newTotal = productsTotal + accessoriesTotal;
 
     setNewBudget(prev => ({
       ...prev,
@@ -473,6 +484,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     accessory.name?.toLowerCase().includes(searchTerm.accessory.toLowerCase())
   );
 
+  const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
+  const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
+  const totalValue = productsTotal + accessoriesTotal;
+
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>Erro: {error}</p>;
 
@@ -505,7 +520,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
               <h4>Produtos Adicionados ({newBudget.products.length})</h4>
               <div className="products-summary">
                 <p>Total de produtos: {newBudget.products.length}</p>
-                <p>Valor total dos produtos: R$ {newBudget.totalValue.toFixed(2)}</p>
+                <p>Valor total dos produtos: R$ {productsTotal.toFixed(2)}</p>
               </div>
               {newBudget.products.map((prod, index) => (
                 <div key={index} className="added-product-item">
@@ -629,7 +644,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
               <h4>Acessórios Adicionados ({newBudget.accessories.length})</h4>
               <div className="accessories-summary">
                 <p>Total de acessórios: {newBudget.accessories.length}</p>
-                <p>Valor total dos acessórios: R$ {newBudget.totalValue.toFixed(2)}</p>
+                <p>Valor total dos acessórios: R$ {accessoriesTotal.toFixed(2)}</p>
               </div>
               {newBudget.accessories.map((acc, index) => (
                 <div key={index} className="added-accessory-item">
@@ -724,9 +739,9 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         </div>
 
         {/* Total Value and Submit */}
-        {newBudget.totalValue > 0 && (
+        {totalValue > 0 && (
           <div className="total-value">
-            <h3>Valor Total: R$ {newBudget.totalValue.toFixed(2)}</h3>
+            <h3>Valor Total: R$ {totalValue.toFixed(2)}</h3>
           </div>
         )}
 
