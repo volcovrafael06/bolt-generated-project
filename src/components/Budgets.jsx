@@ -525,7 +525,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
               {newBudget.products.map((prod, index) => (
                 <div key={index} className="added-product-item">
                   <div className="product-info">
-                    <p><strong>{prod.product.nome}</strong> - {prod.product.modelo}</p>
+                    {prod.product && (<p><strong>{prod.product.nome}</strong> - {prod.product.modelo}</p>)}
                     <p>Dimensões: {prod.width}m {prod.height && `x ${prod.height}m`}</p>
                     {prod.bando && <p>Bandô incluído</p>}
                     {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
