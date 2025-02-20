@@ -360,22 +360,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }));
   };
 
-  const handleEditProduct = (index) => {
-    const productToEdit = newBudget.products[index];
-    setCurrentProduct(productToEdit);
-    
-    // Remover o produto da lista
-    const updatedProducts = newBudget.products.filter((_, i) => i !== index);
-    const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
-    const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
-    
-    setNewBudget(prev => ({
-      ...prev,
-      products: updatedProducts,
-      totalValue: productsTotal + accessoriesTotal
-    }));
-  };
-
   const handleAddAccessory = () => {
     if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) {
       setError("Por favor, preencha todos os campos do acessório.");
@@ -413,22 +397,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       ...prev,
       accessories: updatedAccessories,
       totalValue: newTotal
-    }));
-  };
-
-  const handleEditAccessory = (index) => {
-    const accessoryToEdit = newBudget.accessories[index];
-    setCurrentAccessory(accessoryToEdit);
-    
-    // Remover o acessório da lista
-    const updatedAccessories = newBudget.accessories.filter((_, i) => i !== index);
-    const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
-    const accessoriesTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
-    
-    setNewBudget(prev => ({
-      ...prev,
-      accessories: updatedAccessories,
-      totalValue: productsTotal + accessoriesTotal
     }));
   };
 
@@ -602,22 +570,13 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
                     <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
                   </div>
-                  <div className="actions">
-                    <button
-                      type="button"
-                      className="edit-button"
-                      onClick={() => handleEditProduct(index)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="remove-button"
-                      onClick={() => handleRemoveProduct(index)}
-                    >
-                      Remover
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="remove-button"
+                    onClick={() => handleRemoveProduct(index)}
+                  >
+                    Remover
+                  </button>
                 </div>
               ))}
             </div>
@@ -734,22 +693,13 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     <p>Quantidade: {acc.quantity}</p>
                     <p className="accessory-subtotal">Subtotal: R$ {acc.subtotal.toFixed(2)}</p>
                   </div>
-                  <div className="actions">
-                    <button
-                      type="button"
-                      className="edit-button"
-                      onClick={() => handleEditAccessory(index)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="remove-button"
-                      onClick={() => handleRemoveAccessory(index)}
-                    >
-                      Remover
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="remove-button"
+                    onClick={() => handleRemoveAccessory(index)}
+                  >
+                    Remover
+                  </button>
                 </div>
               ))}
             </div>
