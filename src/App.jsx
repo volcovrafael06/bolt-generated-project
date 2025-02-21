@@ -16,6 +16,8 @@ import Dashboard from './components/Dashboard';
 import { supabase } from './supabase/client';
 import TestDB from './components/TestDB';
 import { authService } from './services/authService';
+import { syncService } from './services/syncService';
+import { localDB } from './services/localDatabase';
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -26,59 +28,76 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(authService.getCurrentUser());
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
 
-  // Fetch initial data
   useEffect(() => {
-    fetchInitialData();
+    loadFromCache();
+    syncData();
+    
+    const syncInterval = setInterval(syncData, 30 * 60 * 1000);
+    return () => clearInterval(syncInterval);
   }, []);
 
-  const fetchInitialData = async () => {
+  const loadFromCache = async () => {
     try {
       setLoading(true);
-      
-      // Fetch customers
-      const { data: customersData, error: customersError } = await supabase
-        .from('clientes')
-        .select('*');
-      if (customersError) throw customersError;
-      setCustomers(customersData || []);
+      const [
+        localBudgets,
+        localCustomers,
+        localProducts,
+        localAccessories,
+        localConfig
+      ] = await Promise.all([
+        localDB.getAll('orcamentos'),
+        localDB.getAll('clientes'),
+        localDB.getAll('produtos'),
+        localDB.getAll('accessories'),
+        localDB.get('configuracoes', 1)
+      ]);
 
-      // Fetch products
-      const { data: productsData, error: productsError } = await supabase
-        .from('produtos')
-        .select('*');
-      if (productsError) throw productsError;
-      setProducts(productsData || []);
-
-      // Fetch accessories
-      const { data: accessoriesData, error: accessoriesError } = await supabase
-        .from('accessories')
-        .select('*');
-      if (accessoriesError) throw accessoriesError;
-      setAccessories(accessoriesData || []);
-
-      // Fetch budgets
-      const { data: budgetsData, error: budgetsError } = await supabase
-        .from('orcamentos')
-        .select(`
-          *,
-          clientes (
-            id,
-            name,
-            email,
-            phone,
-            address
-          )
-        `);
-      if (budgetsError) throw budgetsError;
-      setBudgets(budgetsData || []);
-
+      if (localBudgets?.length) setBudgets(localBudgets);
+      if (localCustomers?.length) setCustomers(localCustomers);
+      if (localProducts?.length) setProducts(localProducts);
+      if (localAccessories?.length) setAccessories(localAccessories);
+      if (localConfig?.company_logo) setCompanyLogo(localConfig.company_logo);
     } catch (error) {
-      console.error('Error fetching initial data:', error);
+      console.error('Error loading from cache:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncData = async () => {
+    if (syncing) return; 
+    try {
+      setSyncing(true);
+      await syncService.syncAll();
+      
+      const [
+        updatedBudgets,
+        updatedCustomers,
+        updatedProducts,
+        updatedAccessories,
+        updatedConfig
+      ] = await Promise.all([
+        localDB.getAll('orcamentos'),
+        localDB.getAll('clientes'),
+        localDB.getAll('produtos'),
+        localDB.getAll('accessories'),
+        localDB.get('configuracoes', 1)
+      ]);
+
+      setBudgets(updatedBudgets);
+      setCustomers(updatedCustomers);
+      setProducts(updatedProducts);
+      setAccessories(updatedAccessories);
+      if (updatedConfig?.company_logo) setCompanyLogo(updatedConfig.company_logo);
+    } catch (error) {
+      console.error('Error syncing data:', error);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -140,6 +159,13 @@ function App() {
                   </>
                 )}
                 <button onClick={handleLogout}>Sair</button>
+                <button 
+                  onClick={syncData} 
+                  disabled={syncing}
+                  className="sync-button"
+                >
+                  {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                </button>
               </>
             ) : (
               <li><NavLink to="/login">Login</NavLink></li>
