@@ -20,23 +20,36 @@
   border-bottom: 2px solid #f0f0f0;
 }
 
-.logo-section {
-  width: 50%;
+.company-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 2rem;
 }
 
 .company-logo {
-  max-width: 200px;
+  max-width: 150px;
   height: auto;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 
 .company-info {
+  flex: 1;
   text-align: right;
 }
 
+.company-info h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
 .company-info p {
-  margin: 5px 0;
+  margin: 0.25rem 0;
+  color: #666;
 }
 
 .dates-section {

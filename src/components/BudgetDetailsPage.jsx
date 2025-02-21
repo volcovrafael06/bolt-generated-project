@@ -12,6 +12,7 @@ function BudgetDetailsPage({ companyLogo }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accessories, setAccessories] = useState([]);
+  const [companyData, setCompanyData] = useState(null);
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -64,6 +65,21 @@ function BudgetDetailsPage({ companyLogo }) {
       }
     };
 
+    const loadCompanyData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('configuracoes')
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        setCompanyData(data);
+      } catch (error) {
+        console.error('Error loading company data:', error);
+      }
+    };
+
+    loadCompanyData();
     loadBudgetDetails();
   }, [budgetId]);
 
@@ -282,21 +298,21 @@ function BudgetDetailsPage({ companyLogo }) {
   }
 
   return (
-    <div className="budget-details-container">
+    <div className="budget-details-page">
       <div className="budget-print-layout" ref={contentRef}>
-        <div className="header-section">
-          <div className="logo-section">
-            {companyLogo ? (
-              <img src={companyLogo} alt="Logo da Empresa" className="company-logo" />
-            ) : (
-              <img src="/persifix-logo.png" alt="Logo da Empresa" className="company-logo" />
-            )}
-          </div>
+        <div className="company-header">
+          {companyLogo && (
+            <img src={companyLogo} alt="Logo da empresa" className="company-logo" />
+          )}
           <div className="company-info">
-            <p>Ultracred</p>
-            <p>CNPJ: 13.601.392/0001-96</p>
-            <p>av paulista</p>
-            <p>Tel.: 1533333840</p>
+            {companyData && (
+              <>
+                <h2>{companyData.nome_fantasia || 'Ultracred'}</h2>
+                <p>CNPJ: {companyData.cnpj}</p>
+                <p>{companyData.endereco}</p>
+                <p>Tel.: {companyData.telefone}</p>
+              </>
+            )}
           </div>
         </div>
 
