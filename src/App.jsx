@@ -62,7 +62,16 @@ function App() {
       // Fetch budgets
       const { data: budgetsData, error: budgetsError } = await supabase
         .from('orcamentos')
-        .select('*');
+        .select(`
+          *,
+          clientes (
+            id,
+            name,
+            email,
+            phone,
+            address
+          )
+        `);
       if (budgetsError) throw budgetsError;
       setBudgets(budgetsData || []);
 
