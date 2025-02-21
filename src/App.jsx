@@ -291,7 +291,7 @@ function App() {
             path="/reports" 
             element={
               authService.hasAccess('admin') ? (
-                <Reports />
+                <Reports budgets={budgets} />
               ) : (
                 <div>Acesso negado.</div>
               )
