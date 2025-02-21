@@ -117,6 +117,10 @@ function BudgetDetailsPage({ companyLogo }) {
     return accessory ? accessory.name : 'Acessório não encontrado';
   };
 
+  const calculateValidadeDate = (createdAt, validadeDias) => {
+    return new Date(new Date(createdAt).getTime() + validadeDias * 24 * 60 * 60 * 1000).toLocaleDateString();
+  };
+
   const generatePDF = () => {
     const doc = new jsPDF();
     
@@ -153,7 +157,7 @@ function BudgetDetailsPage({ companyLogo }) {
     
     // Add dates with proper spacing
     doc.text(`Data do Orçamento: ${new Date(budget.created_at).toLocaleDateString()}`, 20, 70);
-    const validadeText = `Válido até: ${new Date(new Date(budget.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}`;
+    const validadeText = `Válido até: ${calculateValidadeDate(budget.created_at, companyData?.validade_orcamento || 30)}`;
     const validadeWidth = doc.getStringUnitWidth(validadeText) * 10 / doc.internal.scaleFactor;
     doc.text(validadeText, 190 - validadeWidth, 70);
     
@@ -319,7 +323,7 @@ function BudgetDetailsPage({ companyLogo }) {
         <div className="budget-content">
           <div className="dates-section">
             <p>Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}</p>
-            <p>Válido até: {new Date(new Date(budget.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
+            <p>Válido até: {calculateValidadeDate(budget.created_at, companyData?.validade_orcamento || 30)}</p>
           </div>
 
           <section className="client-section">
