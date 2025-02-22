@@ -51,12 +51,14 @@ tr:hover {
   background-color: #f9f9f9;
 }
 
+/* Action buttons */
 td button {
   margin: 0 5px;
   padding: 5px 10px;
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
   transition: background-color 0.3s;
 }
 
@@ -65,19 +67,24 @@ td button:first-of-type {
   color: white;
 }
 
+td button:first-of-type:hover {
+  background-color: #45a049;
+}
+
 td button:last-of-type {
   background-color: #f44336;
   color: white;
 }
 
-td button:hover {
-  opacity: 0.9;
+td button:last-of-type:hover {
+  background-color: #da190b;
 }
 
+/* Links in table */
 td a {
+  margin: 0 5px;
   color: #2196F3;
   text-decoration: none;
-  margin: 0 5px;
 }
 
 td a:hover {

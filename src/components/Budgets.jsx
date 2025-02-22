@@ -481,7 +481,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         valor_total: newBudget.totalValue,
         produtos_json: JSON.stringify(cleanProducts),
         observacao: newBudget.observation || '',
-        acessorios_json: JSON.stringify(cleanAccessories)
+        acessorios_json: JSON.stringify(cleanAccessories),
+        status: isEditing ? undefined : 'pending' // Set status to 'pending' for new budgets, undefined for updates to keep existing value
       };
 
       console.log('Saving budget with data:', budgetData);

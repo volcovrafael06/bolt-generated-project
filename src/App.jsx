@@ -241,12 +241,48 @@ function App() {
             path="/budgets" 
             element={
               <BudgetList 
-                budgets={budgets} 
-                validadeOrcamento={validadeOrcamento} 
-                onFinalizeBudget={handleFinalizeBudget} 
-                onCancelBudget={handleCancelBudget} 
+                budgets={budgets}
+                validadeOrcamento={validadeOrcamento}
+                onFinalizeBudget={async (budgetId) => {
+                  try {
+                    const { error } = await supabase
+                      .from('orcamentos')
+                      .update({ status: 'finalizado' })
+                      .eq('id', budgetId);
+
+                    if (error) throw error;
+
+                    const updatedBudgets = budgets.map(budget =>
+                      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+                    );
+                    setBudgets(updatedBudgets);
+                    alert(`Orçamento ${budgetId} finalizado.`);
+                  } catch (error) {
+                    console.error('Error finalizing budget:', error);
+                    alert('Erro ao finalizar orçamento.');
+                  }
+                }}
+                onCancelBudget={async (budgetId) => {
+                  try {
+                    const { error } = await supabase
+                      .from('orcamentos')
+                      .update({ status: 'cancelado' })
+                      .eq('id', budgetId);
+
+                    if (error) throw error;
+
+                    const updatedBudgets = budgets.map(budget =>
+                      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
+                    );
+                    setBudgets(updatedBudgets);
+                    alert(`Orçamento ${budgetId} cancelado.`);
+                  } catch (error) {
+                    console.error('Error canceling budget:', error);
+                    alert('Erro ao cancelar orçamento.');
+                  }
+                }}
               />
-            } 
+            }
           />
           <Route 
             path="/budgets/new" 
