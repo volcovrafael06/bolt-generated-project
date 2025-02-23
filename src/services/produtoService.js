@@ -20,7 +20,10 @@ export const produtoService = {
       preco_custo: produto.cost_price,
       margem_lucro: produto.profit_margin,
       preco_venda: produto.sale_price,
-      metodo_calculo: produto.calculation_method
+      metodo_calculo: produto.calculation_method,
+      altura_minima: produto.altura_minima,
+      largura_minima: produto.largura_minima,
+      area_minima: produto.area_minima
     }
 
     const { data, error } = await supabase
@@ -42,7 +45,10 @@ export const produtoService = {
       preco_custo: produto.cost_price,
       margem_lucro: produto.profit_margin,
       preco_venda: produto.sale_price,
-      metodo_calculo: produto.calculation_method
+      metodo_calculo: produto.calculation_method,
+      altura_minima: produto.altura_minima,
+      largura_minima: produto.largura_minima,
+      area_minima: produto.area_minima
     }
 
     const { data, error } = await supabase

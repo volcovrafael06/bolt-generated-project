@@ -21,7 +21,10 @@ function Products() {
     cost_price: 0,
     profit_margin: 0,
     sale_price: 0,
-    calculation_method: 'm2'
+    calculation_method: 'm2',
+    altura_minima: '',
+    largura_minima: '',
+    area_minima: ''
   });
 
   const [editingProductId, setEditingProductId] = useState(null);
@@ -55,7 +58,10 @@ function Products() {
         cost_price: item.preco_custo,
         profit_margin: item.margem_lucro,
         sale_price: item.preco_venda,
-        calculation_method: item.metodo_calculo
+        calculation_method: item.metodo_calculo,
+        altura_minima: item.altura_minima || '',
+        largura_minima: item.largura_minima || '',
+        area_minima: item.area_minima || ''
       }));
       setProducts(formattedData);
     } catch (err) {
@@ -146,7 +152,10 @@ function Products() {
         cost_price: 0,
         profit_margin: 0,
         sale_price: 0,
-        calculation_method: 'm2'
+        calculation_method: 'm2',
+        altura_minima: '',
+        largura_minima: '',
+        area_minima: ''
       });
       setEditingProductId(null);
     } catch (err) {
@@ -296,17 +305,55 @@ function Products() {
           />
         </div>
 
-        <div className="form-group">
-          <label>Forma de Cálculo:</label>
-          <select
-            name="calculation_method"
-            value={newProduct.calculation_method}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="m2">M2</option>
-            <option value="largura">Largura</option>
-          </select>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Método de Cálculo:</label>
+            <select
+              name="calculation_method"
+              value={newProduct.calculation_method}
+              onChange={handleInputChange}
+            >
+              <option value="m2">Metro Quadrado (m²)</option>
+              <option value="linear">Metro Linear</option>
+              <option value="unidade">Unidade</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Altura Mínima (m):</label>
+            <input
+              type="number"
+              step="0.01"
+              name="altura_minima"
+              value={newProduct.altura_minima}
+              onChange={handleInputChange}
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Largura Mínima (m):</label>
+            <input
+              type="number"
+              step="0.01"
+              name="largura_minima"
+              value={newProduct.largura_minima}
+              onChange={handleInputChange}
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Área Mínima (m²):</label>
+            <input
+              type="number"
+              step="0.01"
+              name="area_minima"
+              value={newProduct.area_minima}
+              onChange={handleInputChange}
+              placeholder="0.00"
+            />
+          </div>
         </div>
 
         <div className="form-actions">
@@ -336,6 +383,9 @@ function Products() {
               <th>Margem</th>
               <th>Preço Venda</th>
               <th>Cálculo</th>
+              <th>Altura Mínima</th>
+              <th>Largura Mínima</th>
+              <th>Área Mínima</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -351,6 +401,9 @@ function Products() {
                 <td>{product.profit_margin}%</td>
                 <td>R$ {product.sale_price}</td>
                 <td>{product.calculation_method}</td>
+                <td>{product.altura_minima}</td>
+                <td>{product.largura_minima}</td>
+                <td>{product.area_minima}</td>
                 <td>
                   <button onClick={() => handleEditProduct(product)}>
                     Editar

@@ -415,3 +415,16 @@ textarea {
 .remove-button:hover {
   background-color: #c0392b;
 }
+
+.minimum-notice {
+  color: #ff6b6b;
+  font-size: 0.85em;
+  margin-left: 8px;
+  font-style: italic;
+}
+
+.dimensions {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+}

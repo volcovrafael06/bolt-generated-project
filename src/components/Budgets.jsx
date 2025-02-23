@@ -252,6 +252,71 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     setCurrentAccessory(prev => ({ ...prev, subtotal }));
   };
 
+  const calculateDimensions = (product, width, height) => {
+    // Converter strings para números
+    const inputWidth = parseFloat(width) || 0;
+    const inputHeight = parseFloat(height) || 0;
+    
+    // Obter as dimensões mínimas do produto
+    const minWidth = parseFloat(product.largura_minima) || 0;
+    const minHeight = parseFloat(product.altura_minima) || 0;
+    const minArea = parseFloat(product.area_minima) || 0;
+    
+    // Calcular dimensões finais
+    let finalWidth = Math.max(inputWidth, minWidth);
+    let finalHeight = Math.max(inputHeight, minHeight);
+    
+    // Calcular área
+    const area = finalWidth * finalHeight;
+    
+    // Se houver área mínima definida e a área calculada for menor
+    if (minArea > 0 && area < minArea) {
+      // Ajustar proporcionalmente as dimensões para atingir a área mínima
+      const ratio = Math.sqrt(minArea / area);
+      finalWidth *= ratio;
+      finalHeight *= ratio;
+    }
+    
+    return {
+      width: finalWidth,
+      height: finalHeight,
+      area: finalWidth * finalHeight,
+      usedMinimum: finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea)
+    };
+  };
+
+  const handleProductDimensionChange = (e) => {
+    const { name, value } = e.target;
+    let updates = { ...currentProduct, [name]: value };
+
+    if (name === 'width' || name === 'height') {
+      if (currentProduct.product) {
+        const dimensions = calculateDimensions(
+          currentProduct.product,
+          name === 'width' ? value : currentProduct.width,
+          name === 'height' ? value : currentProduct.height
+        );
+
+        // Atualizar o subtotal baseado nas dimensões calculadas
+        const subtotal = calculateProductSubtotal({
+          ...updates,
+          width: dimensions.width,
+          height: dimensions.height
+        });
+
+        updates = {
+          ...updates,
+          subtotal,
+          calculatedWidth: dimensions.width,
+          calculatedHeight: dimensions.height,
+          usedMinimum: dimensions.usedMinimum
+        };
+      }
+    }
+
+    setCurrentProduct(updates);
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
@@ -602,33 +667,44 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                 <p>Total de produtos: {newBudget.products.length}</p>
                 <p>Valor total dos produtos: R$ {productsTotal.toFixed(2)}</p>
               </div>
-              {newBudget.products.map((prod, index) => (
-                <div key={index} className="added-product-item">
-                  <div className="product-info">
-                    {prod.product && (<p><strong>{prod.product.nome}</strong> - {prod.product.modelo}</p>)}
-                    <p>Dimensões: {prod.width}m {prod.height && `x ${prod.height}m`}</p>
-                    {prod.bando && <p>Bandô incluído</p>}
-                    {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
-                    <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
+              <div className="products-list">
+                {newBudget.products.map((item, index) => (
+                  <div key={index} className="product-item">
+                    <div className="product-details">
+                      <span className="product-name">{item.product.nome}</span>
+                      <div className="dimensions">
+                        <span>
+                          {item.width}m x {item.height}m
+                          {item.usedMinimum && (
+                            <span className="minimum-notice">
+                              * Dimensões ajustadas para mínimo do produto
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <span className="product-subtotal">
+                        Subtotal: R$ {item.subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="actions">
+                      <button
+                        type="button"
+                        className="edit-button"
+                        onClick={() => handleEditProduct(index)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="remove-button"
+                        onClick={() => handleRemoveProduct(index)}
+                      >
+                        Remover
+                      </button>
+                    </div>
                   </div>
-                  <div className="actions">
-                    <button
-                      type="button"
-                      className="edit-button"
-                      onClick={() => handleEditProduct(index)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="remove-button"
-                      onClick={() => handleRemoveProduct(index)}
-                    >
-                      Remover
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
@@ -658,7 +734,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     type="number"
                     name="width"
                     value={currentProduct.width}
-                    onChange={handleInputChange}
+                    onChange={handleProductDimensionChange}
                     placeholder="Largura"
                     step="0.01"
                   />
@@ -667,7 +743,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                       type="number"
                       name="height"
                       value={currentProduct.height}
-                      onChange={handleInputChange}
+                      onChange={handleProductDimensionChange}
                       placeholder="Altura"
                       step="0.01"
                     />
