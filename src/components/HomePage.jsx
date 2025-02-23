@@ -3,7 +3,7 @@ import Dashboard from './Dashboard';
 import VisitScheduler from './VisitScheduler';
 import { supabase } from '../supabase/client';
 
-function HomePage({ budgets, customers, setCustomers, products, setProducts, accessories, setAccessories, visits, setVisits, setCompanyLogo }) {
+function HomePage({ budgets, customers, setCustomers, products, setProducts, accessories, setAccessories, visits, setVisits, setCompanyLogo, companyLogo }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -57,8 +57,8 @@ function HomePage({ budgets, customers, setCustomers, products, setProducts, acc
   if (error) return <div>Erro: {error}</div>;
 
   return (
-    <div>
-      <h1>Bem-vindo!</h1>
+    <div className="home-page">
+      <h1 className="welcome-title">Bem-vindo!</h1>
       <Dashboard budgets={budgets} customers={customers} visits={visits} />
       <VisitScheduler visits={visits} setVisits={setVisits} />
     </div>

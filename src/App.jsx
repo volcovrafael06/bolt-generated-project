@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Route, Routes, Link, NavLink, useNavigate } from 'react-router-dom';
+import { Route, Routes, Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import BudgetStatusPage from './components/BudgetStatusPage';
 import Budgets from './components/Budgets';
@@ -29,7 +29,9 @@ function App() {
   const [loggedInUser, setLoggedInUser] = useState(authService.getCurrentUser());
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [visits, setVisits] = useState([]);
 
   useEffect(() => {
@@ -126,233 +128,266 @@ function App() {
     setBudgets(updatedBudgets);
   };
 
+  const toggleSidebar = () => {
+    setSidebarExpanded(!sidebarExpanded);
+  };
+
   if (loading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="loading-screen">
+        <div className="loading-spinner">Carregando...</div>
+      </div>
+    );
   }
 
   return (
     <div className="app">
-      <header className="app-header">
-        {companyLogo ? (
-          <img src={companyLogo} alt="Company Logo" style={{ maxHeight: '50px' }} />
-        ) : (
-          <h1>PersiFIX</h1>
-        )}
-        <nav>
-          <ul>
-            {loggedInUser ? (
-              <>
-                <li><NavLink to="/" end>Home</NavLink></li>
-                {loggedInUser.accessLevel === 'admin' && (
-                  <>
-                    <li><NavLink to="/customers">Clientes</NavLink></li>
-                    <li><NavLink to="/products">Produtos</NavLink></li>
-                    <li><NavLink to="/accessories">Acessórios</NavLink></li>
-                    <li><NavLink to="/budgets">Orçamentos</NavLink></li>
-                    <li><NavLink to="/reports">Relatórios</NavLink></li>
-                    <li><NavLink to="/configuracoes">Configurações</NavLink></li>
-                  </>
-                )}
-                {loggedInUser.accessLevel !== 'admin' && (
-                  <>
-                    <li><NavLink to="/budgets">Orçamentos</NavLink></li>
-                  </>
-                )}
-                <button onClick={handleLogout}>Sair</button>
-                <button 
-                  onClick={syncData} 
-                  disabled={syncing}
-                  className="sync-button"
-                >
-                  {syncing ? 'Sincronizando...' : 'Sincronizar'}
-                </button>
-              </>
-            ) : (
-              <li><NavLink to="/login">Login</NavLink></li>
+      {loggedInUser && (
+        <>
+          <button 
+            className="menu-toggle" 
+            onClick={toggleSidebar}
+            aria-label="Toggle Menu"
+          >
+            {sidebarExpanded ? '✕' : '☰'}
+          </button>
+          <div className={`sidebar ${sidebarExpanded ? 'expanded' : ''}`}>
+            {companyLogo && (
+              <img 
+                src={companyLogo} 
+                alt="Logo da Empresa" 
+                className="company-logo"
+              />
             )}
-          </ul>
-        </nav>
-      </header>
-
-      <main className="app-main">
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              loggedInUser ? (
-                <HomePage 
-                  budgets={budgets} 
-                  customers={customers} 
-                  setCustomers={setCustomers} 
-                  products={products} 
-                  setProducts={setProducts} 
-                  accessories={accessories} 
-                  setAccessories={setAccessories} 
-                  visits={visits} 
-                  setVisits={setVisits}
-                  setCompanyLogo={setCompanyLogo}
-                />
-              ) : (
-                <Login onLogin={handleLogin} />
-              )
-            } 
-          />
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          <Route 
-            path="/customers" 
-            element={
-              authService.hasAccess('admin') ? (
-                <Customers 
-                  customers={customers} 
-                  setCustomers={setCustomers} 
-                />
-              ) : (
-                <div>Acesso negado.</div>
-              )
-            } 
-          />
-          <Route 
-            path="/products" 
-            element={
-              authService.hasAccess('admin') ? (
-                <Products 
-                  products={products} 
-                  setProducts={setProducts} 
-                />
-              ) : (
-                <div>Acesso negado.</div>
-              )
-            } 
-          />
-          <Route 
-            path="/accessories" 
-            element={
-              authService.hasAccess('admin') ? (
-                <Accessories 
-                  accessories={accessories} 
-                  setAccessories={setAccessories} 
-                />
-              ) : (
-                <div>Acesso negado.</div>
-              )
-            } 
-          />
-          <Route 
-            path="/budgets" 
-            element={
-              <BudgetList 
-                budgets={budgets}
-                validadeOrcamento={validadeOrcamento}
-                onFinalizeBudget={async (budgetId) => {
-                  try {
-                    const { error } = await supabase
-                      .from('orcamentos')
-                      .update({ status: 'finalizado' })
-                      .eq('id', budgetId);
-
-                    if (error) throw error;
-
-                    const updatedBudgets = budgets.map(budget =>
-                      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
-                    );
-                    setBudgets(updatedBudgets);
-                    alert(`Orçamento ${budgetId} finalizado.`);
-                  } catch (error) {
-                    console.error('Error finalizing budget:', error);
-                    alert('Erro ao finalizar orçamento.');
-                  }
-                }}
-                onCancelBudget={async (budgetId) => {
-                  try {
-                    const { error } = await supabase
-                      .from('orcamentos')
-                      .update({ status: 'cancelado' })
-                      .eq('id', budgetId);
-
-                    if (error) throw error;
-
-                    const updatedBudgets = budgets.map(budget =>
-                      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
-                    );
-                    setBudgets(updatedBudgets);
-                    alert(`Orçamento ${budgetId} cancelado.`);
-                  } catch (error) {
-                    console.error('Error canceling budget:', error);
-                    alert('Erro ao cancelar orçamento.');
-                  }
-                }}
+            <nav>
+              <ul className="nav-list">
+                <li className="nav-item">
+                  <NavLink to="/" className="nav-link">
+                    <span className="icon">🏠</span>
+                    <span className="text">Home</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/customers" className="nav-link">
+                    <span className="icon">👥</span>
+                    <span className="text">Clientes</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/products" className="nav-link">
+                    <span className="icon">📦</span>
+                    <span className="text">Produtos</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/accessories" className="nav-link">
+                    <span className="icon">🔧</span>
+                    <span className="text">Acessórios</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/budgets" className="nav-link">
+                    <span className="icon">📝</span>
+                    <span className="text">Orçamentos</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/reports" className="nav-link">
+                    <span className="icon">📊</span>
+                    <span className="text">Relatórios</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/configuracoes" className="nav-link">
+                    <span className="icon">⚙️</span>
+                    <span className="text">Configurações</span>
+                  </NavLink>
+                </li>
+              </ul>
+            </nav>
+          </div>
+          <main className={`main-content ${sidebarExpanded ? 'expanded' : ''}`}>
+            <Routes>
+              <Route 
+                path="/" 
+                element={
+                  loggedInUser ? (
+                    <HomePage 
+                      budgets={budgets} 
+                      customers={customers} 
+                      setCustomers={setCustomers} 
+                      products={products} 
+                      setProducts={setProducts} 
+                      accessories={accessories} 
+                      setAccessories={setAccessories} 
+                      visits={visits} 
+                      setVisits={setVisits}
+                      setCompanyLogo={setCompanyLogo}
+                      companyLogo={companyLogo}
+                    />
+                  ) : (
+                    <Login onLogin={handleLogin} />
+                  )
+                } 
               />
-            }
-          />
-          <Route 
-            path="/budgets/new" 
-            element={
-              <Budgets 
-                budgets={budgets}
-                setBudgets={setBudgets}
-                customers={customers}
-                setCustomers={setCustomers}
-                products={products}
-                setProducts={setProducts}
-                accessories={accessories}
-                setAccessories={setAccessories}
+              <Route path="/login" element={<Login onLogin={handleLogin} />} />
+              <Route 
+                path="/customers" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <Customers 
+                      customers={customers} 
+                      setCustomers={setCustomers} 
+                    />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
               />
-            } 
-          />
-          <Route 
-            path="/budgets/:budgetId/view" 
-            element={
-              <BudgetDetailsPage 
-                budgets={budgets}
-                companyLogo={companyLogo}
+              <Route 
+                path="/products" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <Products 
+                      products={products} 
+                      setProducts={setProducts} 
+                    />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
               />
-            } 
-          />
-          <Route 
-            path="/budgets/:budgetId/edit" 
-            element={
-              <Budgets 
-                budgets={budgets}
-                setBudgets={setBudgets}
-                customers={customers}
-                setCustomers={setCustomers}
-                products={products}
-                setProducts={setProducts}
-                accessories={accessories}
-                setAccessories={setAccessories}
+              <Route 
+                path="/accessories" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <Accessories 
+                      accessories={accessories} 
+                      setAccessories={setAccessories} 
+                    />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
               />
-            } 
-          />
-          <Route 
-            path="/reports" 
-            element={
-              authService.hasAccess('admin') ? (
-                <Reports budgets={budgets} />
-              ) : (
-                <div>Acesso negado.</div>
-              )
-            } 
-          />
-          <Route 
-            path="/configuracoes" 
-            element={
-              authService.hasAccess('admin') ? (
-                <Configuracoes 
-                  setCompanyLogo={setCompanyLogo} 
-                  setValidadeOrcamento={setValidadeOrcamento} 
-                  validadeOrcamento={validadeOrcamento} 
-                />
-              ) : (
-                <div>Acesso negado.</div>
-              )
-            } 
-          />
-          <Route path="/test-db" element={<TestDB />} />
-        </Routes>
-      </main>
+              <Route 
+                path="/budgets" 
+                element={
+                  <BudgetList 
+                    budgets={budgets}
+                    validadeOrcamento={validadeOrcamento}
+                    onFinalizeBudget={async (budgetId) => {
+                      try {
+                        const { error } = await supabase
+                          .from('orcamentos')
+                          .update({ status: 'finalizado' })
+                          .eq('id', budgetId);
+
+                        if (error) throw error;
+
+                        const updatedBudgets = budgets.map(budget =>
+                          budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+                        );
+                        setBudgets(updatedBudgets);
+                        alert(`Orçamento ${budgetId} finalizado.`);
+                      } catch (error) {
+                        console.error('Error finalizing budget:', error);
+                        alert('Erro ao finalizar orçamento.');
+                      }
+                    }}
+                    onCancelBudget={async (budgetId) => {
+                      try {
+                        const { error } = await supabase
+                          .from('orcamentos')
+                          .update({ status: 'cancelado' })
+                          .eq('id', budgetId);
+
+                        if (error) throw error;
+
+                        const updatedBudgets = budgets.map(budget =>
+                          budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
+                        );
+                        setBudgets(updatedBudgets);
+                        alert(`Orçamento ${budgetId} cancelado.`);
+                      } catch (error) {
+                        console.error('Error canceling budget:', error);
+                        alert('Erro ao cancelar orçamento.');
+                      }
+                    }}
+                  />
+                }
+              />
+              <Route 
+                path="/budgets/new" 
+                element={
+                  <Budgets 
+                    budgets={budgets}
+                    setBudgets={setBudgets}
+                    customers={customers}
+                    setCustomers={setCustomers}
+                    products={products}
+                    setProducts={setProducts}
+                    accessories={accessories}
+                    setAccessories={setAccessories}
+                  />
+                } 
+              />
+              <Route 
+                path="/budgets/:budgetId/view" 
+                element={
+                  <BudgetDetailsPage 
+                    budgets={budgets}
+                    companyLogo={companyLogo}
+                  />
+                } 
+              />
+              <Route 
+                path="/budgets/:budgetId/edit" 
+                element={
+                  <Budgets 
+                    budgets={budgets}
+                    setBudgets={setBudgets}
+                    customers={customers}
+                    setCustomers={setCustomers}
+                    products={products}
+                    setProducts={setProducts}
+                    accessories={accessories}
+                    setAccessories={setAccessories}
+                  />
+                } 
+              />
+              <Route 
+                path="/reports" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <Reports budgets={budgets} />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
+              />
+              <Route 
+                path="/configuracoes" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <Configuracoes 
+                      setCompanyLogo={setCompanyLogo} 
+                      setValidadeOrcamento={setValidadeOrcamento} 
+                      validadeOrcamento={validadeOrcamento} 
+                    />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
+              />
+              <Route path="/test-db" element={<TestDB />} />
+            </Routes>
+          </main>
+        </>
+      )}
 
       <footer className="app-footer">
-        <p> 2024 PersiFIX Sistemas</p>
+        <p> 2025 Vecchio Sistemas</p>
       </footer>
     </div>
   );

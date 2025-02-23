@@ -184,14 +184,16 @@ function Accessories() {
   }
 
   return (
-    <div className="accessories-container">
-      <h2>Gerenciar Acessórios</h2>
-
-      <form onSubmit={handleSubmit} className="accessory-form">
+    <div className="accessories-page">
+      <div className="page-header">
+        <h1 className="page-title">Gerenciar Acessórios</h1>
+      </div>
+      <form onSubmit={handleSubmit} className="accessories-form">
         <div className="form-group">
-          <label>Nome do Acessório:</label>
+          <label htmlFor="accessoryName">Nome do Acessório:</label>
           <input
             type="text"
+            id="accessoryName"
             name="name"
             value={newAccessory.name}
             onChange={handleInputChange}
@@ -200,9 +202,10 @@ function Accessories() {
         </div>
 
         <div className="form-group">
-          <label>Unidade:</label>
+          <label htmlFor="unit">Unidade:</label>
           <input
             type="text"
+            id="unit"
             name="unit"
             value={newAccessory.unit}
             onChange={handleInputChange}
