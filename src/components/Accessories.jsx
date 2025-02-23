@@ -8,9 +8,14 @@ function Accessories() {
   const [newAccessory, setNewAccessory] = useState({
     name: '',
     unit: '',
-    colors: [],
+    colors: []
   });
-  const [newColor, setNewColor] = useState({ color: '', price: 0 });
+  const [newColor, setNewColor] = useState({
+    color: '',
+    cost_price: 0,
+    profit_margin: 0,
+    sale_price: 0
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -40,33 +45,51 @@ function Accessories() {
     }
   };
 
+  const calculateSalePrice = (costPrice, profitMargin) => {
+    const cost = parseFloat(costPrice) || 0;
+    const margin = parseFloat(profitMargin) || 0;
+    return cost + (cost * (margin / 100));
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewAccessory(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewAccessory(prev => ({ ...prev, [name]: value }));
   };
 
   const handleColorInputChange = (e) => {
     const { name, value } = e.target;
-    setNewColor(prev => ({
-      ...prev,
-      [name]: name === 'price' ? parseFloat(value) || 0 : value
-    }));
+    setNewColor(prev => {
+      const updates = { ...prev, [name]: value };
+
+      // Atualizar preço de venda quando preço de custo ou margem mudar
+      if (name === 'cost_price' || name === 'profit_margin') {
+        updates.sale_price = calculateSalePrice(
+          name === 'cost_price' ? value : prev.cost_price,
+          name === 'profit_margin' ? value : prev.profit_margin
+        );
+      }
+
+      return updates;
+    });
   };
 
   const handleAddColor = () => {
-    if (!newColor.color.trim() || newColor.price < 0) {
-      setError('Cor inválida ou preço negativo');
+    if (!newColor.color.trim() || newColor.cost_price < 0) {
+      setError('Cor inválida ou preço de custo negativo');
       return;
     }
 
     setNewAccessory(prev => ({
       ...prev,
-      colors: [...prev.colors, newColor]
+      colors: [...prev.colors, { ...newColor }]
     }));
-    setNewColor({ color: '', price: 0 });
+
+    setNewColor({
+      color: '',
+      cost_price: 0,
+      profit_margin: 0,
+      sale_price: 0
+    });
     setError(null);
   };
 
@@ -164,7 +187,7 @@ function Accessories() {
     <div className="accessories-container">
       <h2>Gerenciar Acessórios</h2>
 
-      <form className="accessories-form" onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="accessory-form">
         <div className="form-group">
           <label>Nome do Acessório:</label>
           <input
@@ -172,7 +195,7 @@ function Accessories() {
             name="name"
             value={newAccessory.name}
             onChange={handleInputChange}
-            placeholder="Nome do acessório"
+            required
           />
         </div>
 
@@ -183,53 +206,98 @@ function Accessories() {
             name="unit"
             value={newAccessory.unit}
             onChange={handleInputChange}
-            placeholder="Ex: metro, peça, etc."
+            required
           />
         </div>
 
         <div className="colors-section">
-          <h3>Cores</h3>
-          <div className="form-group">
-            <label>Cor:</label>
-            <input
-              type="text"
-              name="color"
-              value={newColor.color}
-              onChange={handleColorInputChange}
-              placeholder="Nome da cor"
-            />
+          <h3>Cores e Preços</h3>
+          <div className="color-form">
+            <div className="form-group">
+              <label>Cor:</label>
+              <input
+                type="text"
+                name="color"
+                value={newColor.color}
+                onChange={handleColorInputChange}
+                placeholder="Nome da cor"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Preço de Custo:</label>
+              <input
+                type="number"
+                step="0.01"
+                name="cost_price"
+                value={newColor.cost_price}
+                onChange={handleColorInputChange}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Margem de Lucro (%):</label>
+              <input
+                type="number"
+                step="0.01"
+                name="profit_margin"
+                value={newColor.profit_margin}
+                onChange={handleColorInputChange}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Preço de Venda:</label>
+              <input
+                type="number"
+                step="0.01"
+                name="sale_price"
+                value={newColor.sale_price}
+                readOnly
+                placeholder="0.00"
+              />
+            </div>
+
+            <button type="button" onClick={handleAddColor}>
+              Adicionar Cor
+            </button>
           </div>
 
-          <div className="form-group">
-            <label>Preço:</label>
-            <input
-              type="number"
-              name="price"
-              value={newColor.price}
-              onChange={handleColorInputChange}
-              step="0.01"
-              min="0"
-            />
+          <div className="added-colors">
+            <h4>Cores Adicionadas:</h4>
+            <table className="colors-table">
+              <thead>
+                <tr>
+                  <th>Cor</th>
+                  <th>Preço Custo</th>
+                  <th>Margem</th>
+                  <th>Preço Venda</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {newAccessory.colors.map((color, index) => (
+                  <tr key={index}>
+                    <td>{color.color}</td>
+                    <td>R$ {parseFloat(color.cost_price).toFixed(2)}</td>
+                    <td>{parseFloat(color.profit_margin).toFixed(2)}%</td>
+                    <td>R$ {parseFloat(color.sale_price).toFixed(2)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteColor(index)}
+                        className="delete-button"
+                      >
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          <button type="button" className="button" onClick={handleAddColor}>
-            Adicionar Cor
-          </button>
-
-          <ul className="color-list">
-            {newAccessory.colors.map((color, index) => (
-              <li key={index} className="color-item">
-                {color.color} - R$ {color.price.toFixed(2)}
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => handleDeleteColor(index)}
-                >
-                  Remover
-                </button>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <button type="submit" className="button" disabled={loading}>
@@ -255,31 +323,53 @@ function Accessories() {
           <p>Nenhum acessório cadastrado ainda.</p>
         )}
         
-        {!loading && !error && accessories.map(accessory => (
-          <div key={accessory.id} className="accessory-item">
-            <h4>{accessory.name}</h4>
-            <p>Unidade: {accessory.unit}</p>
-            <div>
-              <strong>Cores:</strong>
-              <ul>
-                {accessory.colors && accessory.colors.map((color, index) => (
-                  <li key={index}>
-                    {color.color} - R$ {color.price.toFixed(2)}
-                  </li>
-                ))}
-                {(!accessory.colors || accessory.colors.length === 0) && (
-                  <li>Nenhuma cor cadastrada</li>
-                )}
-              </ul>
-            </div>
-            <button
-              className="button delete-button"
-              onClick={() => handleDeleteAccessory(accessory.id)}
-            >
-              Excluir
-            </button>
-          </div>
-        ))}
+        {!loading && !error && (
+          <table className="accessories-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Unidade</th>
+                <th>Cores e Preços</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accessories.map((accessory) => (
+                <tr key={accessory.id}>
+                  <td>{accessory.name}</td>
+                  <td>{accessory.unit}</td>
+                  <td>
+                    <table className="nested-colors-table">
+                      <thead>
+                        <tr>
+                          <th>Cor</th>
+                          <th>Custo</th>
+                          <th>Margem</th>
+                          <th>Venda</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessory.colors?.map((color, index) => (
+                          <tr key={index}>
+                            <td>{color.color}</td>
+                            <td>R$ {parseFloat(color.cost_price).toFixed(2)}</td>
+                            <td>{parseFloat(color.profit_margin).toFixed(2)}%</td>
+                            <td>R$ {parseFloat(color.sale_price).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </td>
+                  <td>
+                    <button onClick={() => handleDeleteAccessory(accessory.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

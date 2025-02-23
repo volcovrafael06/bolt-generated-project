@@ -12,71 +12,126 @@
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 8px;
+.form-group input[type="number"],
+.form-group input[type="text"] {
+  padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 1rem;
 }
 
-.colors-section {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 4px;
-}
-
-.color-list {
-  list-style: none;
-  padding: 0;
-  margin-top: 10px;
-}
-
-.color-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  margin-bottom: 5px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-}
-
-.button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-.button:hover {
-  background-color: #0056b3;
-}
-
-.button:disabled {
-  background-color: #ccc;
+.form-group input[readonly] {
+  background-color: #f5f5f5;
   cursor: not-allowed;
 }
 
-.error-message {
+.colors-section {
+  margin-top: 2rem;
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.color-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.colors-table,
+.accessories-table,
+.nested-colors-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.colors-table th,
+.colors-table td,
+.accessories-table th,
+.accessories-table td,
+.nested-colors-table th,
+.nested-colors-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.nested-colors-table {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.nested-colors-table th,
+.nested-colors-table td {
+  padding: 0.5rem;
+}
+
+/* Alinhar valores numéricos à direita */
+.colors-table td:nth-child(2),
+.colors-table td:nth-child(3),
+.colors-table td:nth-child(4),
+.nested-colors-table td:nth-child(2),
+.nested-colors-table td:nth-child(3),
+.nested-colors-table td:nth-child(4) {
+  text-align: right;
+}
+
+.added-colors {
+  margin-top: 1.5rem;
+}
+
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-button:hover {
+  background-color: #c82333;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.error {
   color: #dc3545;
-  padding: 10px;
-  margin-bottom: 15px;
+  margin: 1rem 0;
+  padding: 0.5rem;
   border: 1px solid #dc3545;
   border-radius: 4px;
   background-color: #f8d7da;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 }
 
 .accessories-list {
@@ -106,9 +161,18 @@
   padding: 5px 0;
 }
 
-.loading {
-  text-align: center;
-  padding: 20px;
-  font-size: 1.2em;
-  color: #666;
+.accessories-table th,
+.accessories-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.accessories-table th:nth-child(3),
+.accessories-table th:nth-child(4),
+.accessories-table th:nth-child(5),
+.accessories-table td:nth-child(3),
+.accessories-table td:nth-child(4),
+.accessories-table td:nth-child(5) {
+  text-align: right;
 }

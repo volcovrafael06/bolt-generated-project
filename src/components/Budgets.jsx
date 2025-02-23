@@ -167,13 +167,91 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }
   }, [isEditing, budgetId, initialProducts, initialAccessories]);
 
-  useEffect(() => {
-    calculateProductSubtotal();
-  }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
+  const calculateProductSubtotal = (product = currentProduct) => {
+    if (!product.product || !product.width) return 0;
+
+    let subtotal = 0;
+    
+    // Calcular dimensões considerando os mínimos
+    const dimensions = calculateDimensions(
+      product.product,
+      product.width,
+      product.height
+    );
+
+    const width = dimensions.width;
+    const height = dimensions.height;
+    const price = parseFloat(product.product.preco_venda) || 0;
+
+    // Calculate product value based on model
+    if (product.product.modelo.toUpperCase() === 'WAVE') {
+      subtotal = width * price;
+    } else if (width && height) {
+      subtotal = width * height * price;
+    }
+
+    // Add bandô value if selected
+    if (product.bando) {
+      const bandoValue = width * 120;
+      subtotal += bandoValue;
+      if (product === currentProduct) {
+        setCurrentProduct(prev => ({ ...prev, bandoValue }));
+      }
+    }
+
+    // Add installation value if selected
+    if (product.installation) {
+      subtotal += parseFloat(product.installationValue) || 0;
+    }
+
+    if (product === currentProduct) {
+      setCurrentProduct(prev => ({ 
+        ...prev, 
+        subtotal,
+        calculatedWidth: dimensions.width,
+        calculatedHeight: dimensions.height,
+        usedMinimum: dimensions.usedMinimum
+      }));
+    }
+
+    return subtotal;
+  };
+
+  const handleProductDimensionChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentProduct(prev => {
+      const updates = { ...prev, [name]: value };
+      
+      if (name === 'width' || name === 'height') {
+        if (updates.product) {
+          calculateProductSubtotal(updates);
+        }
+      }
+      
+      return updates;
+    });
+  };
 
   useEffect(() => {
-    calculateAccessorySubtotal();
-  }, [currentAccessory.accessory, currentAccessory.color, currentAccessory.quantity]);
+    if (currentProduct.product && (currentProduct.width || currentProduct.height)) {
+      calculateProductSubtotal();
+    }
+  }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
+
+  const calculateAccessorySubtotal = () => {
+    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) return;
+
+    const quantity = parseInt(currentAccessory.quantity, 10) || 1;
+    const color = currentAccessory.accessory.colors.find(c => c.color === currentAccessory.color);
+
+    if (!color) {
+      setCurrentAccessory(prev => ({ ...prev, subtotal: 0 }));
+      return;
+    }
+
+    const subtotal = quantity * (parseFloat(color.sale_price) || 0);
+    setCurrentAccessory(prev => ({ ...prev, subtotal }));
+  };
 
   const fetchProducts = async () => {
     try {
@@ -207,51 +285,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }
   };
 
-  const calculateProductSubtotal = () => {
-    if (!currentProduct.product || !currentProduct.width) return;
-
-    let subtotal = 0;
-    const width = parseFloat(currentProduct.width) || 0;
-    const height = parseFloat(currentProduct.height) || 0;
-    const price = parseFloat(currentProduct.product.preco_venda) || 0;
-
-    // Calculate product value based on model
-    if (currentProduct.product.modelo.toUpperCase() === 'WAVE') {
-      subtotal = width * price;
-    } else if (width && height) {
-      subtotal = width * height * price;
-    }
-
-    // Add bandô value if selected
-    if (currentProduct.bando) {
-      const bandoValue = width * 120;
-      subtotal += bandoValue;
-      setCurrentProduct(prev => ({ ...prev, bandoValue }));
-    }
-
-    // Add installation value if selected
-    if (currentProduct.installation) {
-      subtotal += parseFloat(currentProduct.installationValue) || 0;
-    }
-
-    setCurrentProduct(prev => ({ ...prev, subtotal }));
-  };
-
-  const calculateAccessorySubtotal = () => {
-    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) return;
-
-    const quantity = parseInt(currentAccessory.quantity, 10) || 1;
-    const color = currentAccessory.accessory.colors.find(c => c.color === currentAccessory.color);
-
-    if (!color) {
-      setCurrentAccessory(prev => ({ ...prev, subtotal: 0 }));
-      return;
-    }
-
-    const subtotal = quantity * color.price;
-    setCurrentAccessory(prev => ({ ...prev, subtotal }));
-  };
-
   const calculateDimensions = (product, width, height) => {
     // Converter strings para números
     const inputWidth = parseFloat(width) || 0;
@@ -283,38 +316,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       area: finalWidth * finalHeight,
       usedMinimum: finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea)
     };
-  };
-
-  const handleProductDimensionChange = (e) => {
-    const { name, value } = e.target;
-    let updates = { ...currentProduct, [name]: value };
-
-    if (name === 'width' || name === 'height') {
-      if (currentProduct.product) {
-        const dimensions = calculateDimensions(
-          currentProduct.product,
-          name === 'width' ? value : currentProduct.width,
-          name === 'height' ? value : currentProduct.height
-        );
-
-        // Atualizar o subtotal baseado nas dimensões calculadas
-        const subtotal = calculateProductSubtotal({
-          ...updates,
-          width: dimensions.width,
-          height: dimensions.height
-        });
-
-        updates = {
-          ...updates,
-          subtotal,
-          calculatedWidth: dimensions.width,
-          calculatedHeight: dimensions.height,
-          usedMinimum: dimensions.usedMinimum
-        };
-      }
-    }
-
-    setCurrentProduct(updates);
   };
 
   const handleInputChange = (e) => {
@@ -668,32 +669,19 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                 <p>Valor total dos produtos: R$ {productsTotal.toFixed(2)}</p>
               </div>
               <div className="products-list">
-                {newBudget.products.map((item, index) => (
-                  <div key={index} className="product-item">
-                    <div className="product-details">
-                      <span className="product-name">{item.product.nome}</span>
-                      <div className="dimensions">
-                        <span>
-                          {item.width}m x {item.height}m
-                          {item.usedMinimum && (
-                            <span className="minimum-notice">
-                              * Dimensões ajustadas para mínimo do produto
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <span className="product-subtotal">
-                        Subtotal: R$ {item.subtotal.toFixed(2)}
-                      </span>
+                {newBudget.products.map((prod, index) => (
+                  <div key={index} className="added-product-item">
+                    <div className="product-info">
+                      <p><strong>{prod.product.nome}</strong></p>
+                      <p>
+                        Dimensões: {prod.calculatedWidth?.toFixed(2)}m x {prod.calculatedHeight?.toFixed(2)}m
+                        {prod.usedMinimum && <span className="minimum-warning"> (usando dimensões mínimas)</span>}
+                      </p>
+                      {prod.bando && <p>Bandô: R$ {prod.bandoValue.toFixed(2)}</p>}
+                      {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
+                      <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
                     </div>
                     <div className="actions">
-                      <button
-                        type="button"
-                        className="edit-button"
-                        onClick={() => handleEditProduct(index)}
-                      >
-                        Editar
-                      </button>
                       <button
                         type="button"
                         className="remove-button"
@@ -817,6 +805,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     <p><strong>{acc.accessory.name}</strong></p>
                     <p>Cor: {acc.color}</p>
                     <p>Quantidade: {acc.quantity}</p>
+                    <p>Preço unitário: R$ {acc.accessory.colors.find(c => c.color === acc.color)?.sale_price.toFixed(2)}</p>
                     <p className="accessory-subtotal">Subtotal: R$ {acc.subtotal.toFixed(2)}</p>
                   </div>
                   <div className="actions">
@@ -866,11 +855,12 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     name="color"
                     value={currentAccessory.color}
                     onChange={handleAccessoryInputChange}
+                    className="form-control"
                   >
-                    <option value="" disabled>Selecione a cor</option>
+                    <option value="">Selecione uma cor</option>
                     {currentAccessory.accessory.colors.map((color, index) => (
                       <option key={index} value={color.color}>
-                        {color.color}
+                        {color.color} - R$ {parseFloat(color.sale_price).toFixed(2)}
                       </option>
                     ))}
                   </select>
