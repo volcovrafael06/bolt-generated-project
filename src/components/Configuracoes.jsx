@@ -22,6 +22,8 @@ function Configuracoes({ setCompanyLogo }) {
   const [localCompanyLogo, setLocalCompanyLogo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [bandoCusto, setBandoCusto] = useState(80);
+  const [bandoVenda, setBandoVenda] = useState(120);
 
   useEffect(() => {
     loadConfiguracoes();
@@ -50,6 +52,8 @@ function Configuracoes({ setCompanyLogo }) {
         setFormulaInstalacao(data.formula_instalacao || '');
         setLocalCompanyLogo(data.company_logo || null);
         setCompanyLogo(data.company_logo || null);
+        setBandoCusto(data.bando_custo || 80);
+        setBandoVenda(data.bando_venda || 120);
       }
     } catch (err) {
       setError(err.message);
@@ -211,7 +215,7 @@ function Configuracoes({ setCompanyLogo }) {
       setLoading(true);
       setError(null);
 
-      const configuracao = {
+      const updates = {
         cnpj,
         razao_social: razaoSocial,
         nome_fantasia: nomeFantasia,
@@ -222,12 +226,14 @@ function Configuracoes({ setCompanyLogo }) {
         formula_comprimento: formulaComprimento,
         formula_bando: formulaBando,
         formula_instalacao: formulaInstalacao,
-        company_logo: localCompanyLogo
+        company_logo: localCompanyLogo,
+        bando_custo: bandoCusto,
+        bando_venda: bandoVenda
       };
 
       const { error } = await supabase
         .from('configuracoes')
-        .update(configuracao)
+        .update(updates)
         .eq('id', 1);
 
       if (error) throw error;
@@ -402,6 +408,29 @@ function Configuracoes({ setCompanyLogo }) {
             value={formulaInstalacao}
             onChange={(e) => setFormulaInstalacao(e.target.value)}
           />
+        </div>
+        <div className="config-section">
+          <h3>Configurações de Preços</h3>
+          <div className="form-group">
+            <label>Preço de Custo do Bandô (por metro):</label>
+            <input
+              type="number"
+              value={bandoCusto}
+              onChange={(e) => setBandoCusto(parseFloat(e.target.value))}
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <div className="form-group">
+            <label>Preço de Venda do Bandô (por metro):</label>
+            <input
+              type="number"
+              value={bandoVenda}
+              onChange={(e) => setBandoVenda(parseFloat(e.target.value))}
+              step="0.01"
+              min="0"
+            />
+          </div>
         </div>
         <div className="form-actions">
           <button type="button" onClick={() => setShowManageSellers(!showManageSellers)}>

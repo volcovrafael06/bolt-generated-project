@@ -23,6 +23,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     height: '',
     bando: false,
     bandoValue: 0,
+    bandoCusto: 0,
     installation: false,
     installationValue: 0,
     subtotal: 0
@@ -41,6 +42,10 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState({ customer: '', product: '', accessory: '' });
+  const [bandoConfig, setBandoConfig] = useState({
+    custo: 80,
+    venda: 120
+  });
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -85,6 +90,30 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   }, [initialCustomers, initialProducts, initialAccessories]);
 
   useEffect(() => {
+    const loadBandoConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('configuracoes')
+          .select('bando_custo, bando_venda')
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setBandoConfig({
+            custo: data.bando_custo || 80,
+            venda: data.bando_venda || 120
+          });
+        }
+      } catch (error) {
+        console.error('Error loading bando config:', error);
+      }
+    };
+
+    loadBandoConfig();
+  }, []);
+
+  useEffect(() => {
     if (isEditing && budgetId) {
       const loadBudgetData = async () => {
         try {
@@ -126,6 +155,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                 height: p.altura || '',
                 bando: p.bando || false,
                 bandoValue: p.valor_bando || 0,
+                bandoCusto: p.valor_bando_custo || 0,
                 installation: p.instalacao || false,
                 installationValue: p.valor_instalacao || 0,
                 subtotal: p.subtotal || 0
@@ -192,10 +222,15 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
     // Add bandô value if selected
     if (product.bando) {
-      const bandoValue = width * 120;
+      const bandoValue = width * bandoConfig.venda;
+      const bandoCusto = width * bandoConfig.custo;
       subtotal += bandoValue;
       if (product === currentProduct) {
-        setCurrentProduct(prev => ({ ...prev, bandoValue }));
+        setCurrentProduct(prev => ({ 
+          ...prev, 
+          bandoValue,
+          bandoCusto 
+        }));
       }
     }
 
@@ -383,6 +418,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       height: '',
       bando: false,
       bandoValue: 0,
+      bandoCusto: 0,
       installation: false,
       installationValue: 0,
       subtotal: 0
@@ -427,6 +463,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       height: '',
       bando: false,
       bandoValue: 0,
+      bandoCusto: 0,
       installation: false,
       installationValue: 0,
       subtotal: 0
@@ -543,6 +580,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         altura: product.height ? parseFloat(product.height) : null,
         bando: product.bando,
         valor_bando: product.bandoValue,
+        valor_bando_custo: product.bandoCusto,
         instalacao: product.installation,
         valor_instalacao: parseFloat(product.installationValue),
         subtotal: product.subtotal
