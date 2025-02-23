@@ -14,7 +14,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     products: [],
     accessories: [],
     observation: '',
-    totalValue: 0
+    totalValue: 0,
+    negotiatedValue: null
   });
 
   const [currentProduct, setCurrentProduct] = useState({
@@ -185,7 +186,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
             products,
             accessories,
             observation: budget.observacao || '',
-            totalValue: budget.valor_total || 0
+            totalValue: budget.valor_total || 0,
+            negotiatedValue: budget.valor_negociado
           });
         } catch (error) {
           console.error('Error loading budget:', error);
@@ -604,6 +606,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         produtos_json: JSON.stringify(cleanProducts),
         observacao: newBudget.observation || '',
         acessorios_json: JSON.stringify(cleanAccessories),
+        valor_negociado: newBudget.negotiatedValue,
         status: isEditing ? undefined : 'pending' // Set status to 'pending' for new budgets, undefined for updates to keep existing value
       };
 
@@ -963,6 +966,26 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
             onChange={(e) => setNewBudget(prev => ({ ...prev, observation: e.target.value }))}
             rows="4"
           />
+        </div>
+
+        {/* Valor Negociado Section */}
+        <div className="form-section">
+          <h3>Valor Negociado</h3>
+          <input
+            type="number"
+            step="0.01"
+            value={newBudget.negotiatedValue || ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseFloat(e.target.value) : null;
+              setNewBudget(prev => ({ ...prev, negotiatedValue: value }));
+            }}
+            placeholder="Digite o valor negociado (opcional)"
+          />
+          {newBudget.negotiatedValue && (
+            <p className="text-sm text-gray-600 mt-1">
+              Desconto: {((1 - newBudget.negotiatedValue / newBudget.totalValue) * 100).toFixed(2)}%
+            </p>
+          )}
         </div>
 
         {/* Total Value and Submit */}

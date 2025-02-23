@@ -363,7 +363,7 @@ function Reports({ budgets }) {
         const totalBandoValue = productCosts.reduce((sum, cost) => sum + cost.bandoValue, 0);
 
         const totalCost = totalProductCost + totalBandoCost + accessoriesCost;
-        const totalValue = parseFloat(budget.valor_total) || 0;
+        const totalValue = parseFloat(budget.valor_negociado || budget.valor_total) || 0;
         const saleValueWithoutInstallation = totalValue - installationFee;
         const profit = saleValueWithoutInstallation - totalCost;
         const margin = saleValueWithoutInstallation > 0 ? (profit / saleValueWithoutInstallation) * 100 : 0;
@@ -380,6 +380,7 @@ function Reports({ budgets }) {
           totalBandoValue,
           totalCost,
           totalValue,
+          originalValue: parseFloat(budget.valor_total) || 0,
           profit,
           margin
         };
@@ -510,8 +511,20 @@ function Reports({ budgets }) {
               <tr>
                 <td>{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
                 <td>{item.clientes?.name || 'Cliente não encontrado'}</td>
-                <td>{item.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{(item.valor_total - item.installationFee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>
+                  {item.valor_negociado ? (
+                    <span>
+                      {item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <br/>
+                      <small className="text-gray-500">
+                        Original: {item.originalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </small>
+                    </span>
+                  ) : (
+                    item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  )}
+                </td>
+                <td>{(item.totalValue - item.installationFee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.installationFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>

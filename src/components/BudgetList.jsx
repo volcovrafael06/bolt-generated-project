@@ -70,7 +70,19 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
             {filteredBudgets.map(budget => (
               <tr key={budget.id}>
                 <td>{budget.clientes?.name || 'Cliente não encontrado'}</td>
-                <td>{budget.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>
+                  {budget.valor_negociado ? (
+                    <div>
+                      {parseFloat(budget.valor_negociado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <br/>
+                      <small className="text-gray-500">
+                        Original: {parseFloat(budget.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </small>
+                    </div>
+                  ) : (
+                    parseFloat(budget.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  )}
+                </td>
                 <td>{new Date(budget.created_at).toLocaleDateString()}</td>
                 <td>{calculateExpirationDate(budget.created_at, validadeOrcamento)}</td>
                 <td>{budget.status || 'pendente'}</td>
