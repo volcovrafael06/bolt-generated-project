@@ -326,7 +326,20 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const handleAccessoryInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentAccessory(prev => ({ ...prev, [name]: value }));
+    setCurrentAccessory(prev => {
+      const updated = { ...prev, [name]: value };
+      
+      // If we have both color and quantity, calculate the subtotal
+      if (updated.accessory && updated.color && updated.quantity) {
+        const quantity = parseInt(updated.quantity, 10) || 1;
+        const color = updated.accessory.colors.find(c => c.color === updated.color);
+        if (color) {
+          updated.subtotal = quantity * (parseFloat(color.sale_price) || 0);
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const handleCustomerChange = (selectedCustomer) => {
@@ -674,9 +687,16 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     <div className="product-info">
                       <p><strong>{prod.product.nome}</strong></p>
                       <p>
-                        Dimensões: {prod.calculatedWidth?.toFixed(2)}m x {prod.calculatedHeight?.toFixed(2)}m
-                        {prod.usedMinimum && <span className="minimum-warning"> (usando dimensões mínimas)</span>}
+                        Dimensões digitadas: {prod.width}m x {prod.height}m
                       </p>
+                      {prod.usedMinimum && (
+                        <>
+                          <p className="minimum-warning">(usando dimensões mínimas)</p>
+                          <p>
+                            Dimensões calculadas: {prod.calculatedWidth?.toFixed(2)}m x {prod.calculatedHeight?.toFixed(2)}m
+                          </p>
+                        </>
+                      )}
                       {prod.bando && <p>Bandô: R$ {prod.bandoValue.toFixed(2)}</p>}
                       {prod.installation && <p>Instalação: R$ {prod.installationValue}</p>}
                       <p className="product-subtotal">Subtotal: R$ {prod.subtotal.toFixed(2)}</p>
