@@ -24,6 +24,39 @@ function Reports({ budgets }) {
     processReportData();
   }, [period, startDate, endDate, budgets]);
 
+  const calculateDimensions = (product, width, height) => {
+    // Converter strings para números
+    const inputWidth = parseFloat(width) || 0;
+    const inputHeight = parseFloat(height) || 0;
+    
+    // Obter as dimensões mínimas do produto
+    const minWidth = parseFloat(product.largura_minima) || 0;
+    const minHeight = parseFloat(product.altura_minima) || 0;
+    const minArea = parseFloat(product.area_minima) || 0;
+    
+    // Calcular dimensões finais
+    let finalWidth = Math.max(inputWidth, minWidth);
+    let finalHeight = Math.max(inputHeight, minHeight);
+    
+    // Calcular área
+    const area = finalWidth * finalHeight;
+    
+    // Se houver área mínima definida e a área calculada for menor
+    if (minArea > 0 && area < minArea) {
+      // Ajustar proporcionalmente as dimensões para atingir a área mínima
+      const ratio = Math.sqrt(minArea / area);
+      finalWidth *= ratio;
+      finalHeight *= ratio;
+    }
+    
+    return {
+      width: finalWidth,
+      height: finalHeight,
+      area: finalWidth * finalHeight,
+      usedMinimum: finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea)
+    };
+  };
+
   const calculateProductCost = async (product) => {
     try {
       // Buscar o produto no banco para obter o preço de custo
@@ -33,24 +66,105 @@ function Reports({ budgets }) {
         .eq('id', product.produto_id)
         .single();
 
-      if (!productData) return 0;
+      if (!productData) return { 
+        productCost: 0, 
+        bandoCost: 0, 
+        accessoriesCost: 0,
+        accessoriesValue: 0,
+        dimensions: { width: 0, height: 0, usedMinimum: false } 
+      };
 
-      const width = parseFloat(product.largura) || 0;
-      const height = parseFloat(product.altura) || 0;
+      // Calcular as dimensões considerando os mínimos
+      const dimensions = calculateDimensions(
+        productData,
+        product.largura,
+        product.altura
+      );
+
       const costPrice = parseFloat(productData.preco_custo) || 0;
 
-      // Calcula o custo baseado no modelo
+      // Calcula o custo baseado no modelo usando as dimensões calculadas
       let productCost = 0;
       if (productData.modelo?.toUpperCase() === 'WAVE') {
-        productCost = width * costPrice;
+        productCost = dimensions.width * costPrice;
       } else {
-        productCost = width * height * costPrice;
+        productCost = dimensions.width * dimensions.height * costPrice;
       }
 
-      return productCost;
+      // Buscar configurações para o preço do bandô
+      const { data: configData } = await supabase
+        .from('configuracoes')
+        .select('bando_custo, bando_venda')
+        .single();
+
+      // Calcula o custo e valor do bandô se existir, usando a largura calculada
+      let bandoCost = 0;
+      let bandoValue = 0;
+      
+      if (product.bando) {
+        const bandoCustoConfig = configData?.bando_custo || 80;
+        bandoCost = dimensions.width * bandoCustoConfig;
+        bandoValue = dimensions.width * (configData?.bando_venda || 120);
+      }
+
+      // Calcula custo e valor dos acessórios
+      let accessoriesCost = 0;
+      let accessoriesValue = 0;
+      
+      console.log('Acessórios do produto:', product.acessorios);
+      
+      if (product.acessorios_json) {
+        try {
+          const acessorios = JSON.parse(product.acessorios_json);
+          console.log('Acessórios parseados:', acessorios);
+          
+          for (const acessorio of acessorios) {
+            const quantidade = parseFloat(acessorio.quantidade) || 0;
+            const precoCusto = parseFloat(acessorio.preco_custo) || 0;
+            const valor = parseFloat(acessorio.valor) || 0;
+            
+            accessoriesCost += quantidade * precoCusto;
+            accessoriesValue += quantidade * valor;
+            
+            console.log(`Acessório ${acessorio.nome}:`, {
+              quantidade,
+              precoCusto,
+              valor,
+              custoTotal: quantidade * precoCusto,
+              valorTotal: quantidade * valor
+            });
+          }
+        } catch (e) {
+          console.error('Erro ao processar acessórios:', e);
+        }
+      }
+
+      console.log('Custos finais:', {
+        productCost,
+        bandoCost,
+        bandoValue,
+        accessoriesCost,
+        accessoriesValue
+      });
+
+      return { 
+        productCost, 
+        bandoCost,
+        bandoValue,
+        accessoriesCost,
+        accessoriesValue,
+        dimensions 
+      };
     } catch (error) {
       console.error('Erro ao calcular custo do produto:', error);
-      return 0;
+      return { 
+        productCost: 0, 
+        bandoCost: 0,
+        bandoValue: 0,
+        accessoriesCost: 0,
+        accessoriesValue: 0,
+        dimensions: { width: 0, height: 0, usedMinimum: false }
+      };
     }
   };
 
@@ -76,66 +190,90 @@ function Reports({ budgets }) {
       });
     }
 
-    // Process detailed budget data
-    const processedData = await Promise.all(
-      filteredBudgets
-        .filter(budget => budget.status === 'finalizado')
-        .map(async budget => {
-          const produtos = JSON.parse(budget.produtos_json || '[]');
-          
-          // Calculate total installation fee
-          const installationFee = produtos.reduce((sum, prod) => {
-            return sum + (prod.instalacao ? (parseFloat(prod.valor_instalacao) || 0) : 0);
-          }, 0);
+    // Process the budgets data
+    const processedBudgets = await Promise.all(
+      filteredBudgets.map(async budget => {
+        const produtos = JSON.parse(budget.produtos_json || '[]');
+        
+        console.log('Produtos do orçamento:', produtos);
+        
+        // Calculate total installation fee (não é receita, é repasse)
+        const installationFee = produtos.reduce((sum, prod) => {
+          return sum + (prod.instalacao ? (parseFloat(prod.valor_instalacao) || 0) : 0);
+        }, 0);
 
-          // Calculate costs for each product
-          const productCosts = await Promise.all(
-            produtos.map(prod => calculateProductCost(prod))
-          );
+        // Calculate costs for each product
+        const productCosts = await Promise.all(
+          produtos.map(prod => calculateProductCost(prod))
+        );
 
-          const totalCost = productCosts.reduce((sum, cost) => sum + cost, 0);
-          const saleValue = parseFloat(budget.valor_total) || 0;
-          const profit = saleValue - totalCost - installationFee;
-          const margin = saleValue > 0 ? (profit / saleValue) * 100 : 0;
-
+        // Combinar os produtos com seus custos calculados
+        const produtosProcessados = produtos.map((prod, index) => {
+          console.log('Processando produto:', prod);
           return {
-            id: budget.id,
-            date: new Date(budget.created_at).toLocaleDateString(),
-            customerName: budget.clientes?.name || 'Cliente não encontrado',
-            saleValue,
-            installationFee,
-            cost: totalCost,
-            profit,
-            margin: margin.toFixed(2),
-            products: produtos.length,
-            accessories: 0, // Se necessário, adicionar cálculo de acessórios
-            productDetails: produtos.map((prod, index) => ({
-              ...prod,
-              cost: productCosts[index]
-            }))
+            ...prod,
+            cost: productCosts[index],
+            acessorios: prod.acessorios_json ? JSON.parse(prod.acessorios_json) : []
           };
-        })
+        });
+
+        console.log('Produtos processados:', produtosProcessados);
+
+        const totalProductCost = productCosts.reduce((sum, cost) => sum + cost.productCost, 0);
+        const totalBandoCost = productCosts.reduce((sum, cost) => sum + cost.bandoCost, 0);
+        const totalAccessoriesCost = productCosts.reduce((sum, cost) => sum + cost.accessoriesCost, 0);
+        const totalCost = totalProductCost + totalBandoCost + totalAccessoriesCost;
+        
+        // Valor total sem instalação para cálculo do lucro
+        const saleValueWithoutInstallation = parseFloat(budget.valor_total || 0) - installationFee;
+        
+        // Lucro é calculado sem considerar a instalação
+        const profit = saleValueWithoutInstallation - totalCost;
+        const margin = saleValueWithoutInstallation > 0 ? (profit / saleValueWithoutInstallation) * 100 : 0;
+
+        return {
+          id: budget.id,
+          date: new Date(budget.created_at).toLocaleDateString(),
+          customerName: budget.clientes?.name || 'Cliente não encontrado',
+          saleValue: parseFloat(budget.valor_total || 0),
+          saleValueWithoutInstallation,
+          installationFee,
+          cost: totalCost,
+          profit,
+          margin,
+          products: produtos.length,
+          status: budget.status,
+          produtos: produtosProcessados
+        };
+      })
     );
 
     // Calculate summary statistics
-    const summaryStats = {
-      totalBudgets: filteredBudgets.length,
-      finalized: filteredBudgets.filter(b => b.status === 'finalizado').length,
-      pending: filteredBudgets.filter(b => b.status === 'pendente').length,
-      cancelled: filteredBudgets.filter(b => b.status === 'cancelado').length,
-      totalRevenue: processedData.reduce((sum, item) => sum + item.saleValue, 0),
-      totalCosts: processedData.reduce((sum, item) => sum + item.cost, 0),
-      totalInstallation: processedData.reduce((sum, item) => sum + item.installationFee, 0),
-      totalProfit: processedData.reduce((sum, item) => sum + item.profit, 0),
-      averageTicket: processedData.length > 0 ? 
-        processedData.reduce((sum, item) => sum + item.saleValue, 0) / processedData.length : 0,
-      profitMargin: processedData.length > 0 ?
-        (processedData.reduce((sum, item) => sum + item.profit, 0) / 
-         processedData.reduce((sum, item) => sum + item.saleValue, 0) * 100) : 0
-    };
+    const finalized = processedBudgets.filter(b => b.status === 'finalizado');
+    const pending = processedBudgets.filter(b => b.status === 'pendente');
+    const canceled = processedBudgets.filter(b => b.status === 'cancelado');
 
-    setReportData(processedData);
-    setSummary(summaryStats);
+    const totalRevenue = finalized.reduce((sum, b) => sum + b.saleValue, 0);
+    const totalInstallation = finalized.reduce((sum, b) => sum + b.installationFee, 0);
+    const totalCosts = finalized.reduce((sum, b) => sum + b.cost, 0);
+    const revenueWithoutInstallation = totalRevenue - totalInstallation;
+    const totalProfit = revenueWithoutInstallation - totalCosts;
+    const profitMargin = revenueWithoutInstallation > 0 ? (totalProfit / revenueWithoutInstallation) * 100 : 0;
+
+    setSummary({
+      total: processedBudgets.length,
+      finalized: finalized.length,
+      pending: pending.length,
+      canceled: canceled.length,
+      totalRevenue,
+      totalInstallation,
+      totalCosts,
+      totalProfit,
+      profitMargin,
+      averageTicket: finalized.length > 0 ? totalRevenue / finalized.length : 0
+    });
+
+    setReportData(processedBudgets);
   };
 
   const handlePeriodChange = (event) => {
@@ -194,20 +332,21 @@ function Reports({ budgets }) {
       <div className="summary-cards">
         <div className="summary-card">
           <h3>Visão Geral</h3>
-          <p>Total de Orçamentos: {summary.totalBudgets}</p>
+          <p>Total de Orçamentos: {summary.total}</p>
           <p>Finalizados: {summary.finalized}</p>
           <p>Pendentes: {summary.pending}</p>
-          <p>Cancelados: {summary.cancelled}</p>
+          <p>Cancelados: {summary.canceled}</p>
         </div>
         
         <div className="summary-card">
           <h3>Desempenho Financeiro</h3>
-          <p>Receita Total: {summary.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          <p>Receita Total (com instalação): {summary.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          <p>Receita Total (sem instalação): {(summary.totalRevenue - summary.totalInstallation).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           <p>Custos Totais: {summary.totalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Total Instalação: {summary.totalInstallation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          <p>Total Instalação (repasse): {summary.totalInstallation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           <p>Lucro Total: {summary.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           <p>Margem de Lucro: {summary.profitMargin.toFixed(2)}%</p>
-          <p>Ticket Médio: {summary.averageTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          <p>Ticket Médio (sem instalação): {(summary.totalRevenue / summary.finalized - (summary.totalInstallation / summary.finalized)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
         </div>
       </div>
 
@@ -217,7 +356,8 @@ function Reports({ budgets }) {
           <tr>
             <th>Data</th>
             <th>Cliente</th>
-            <th>Valor da Venda</th>
+            <th>Valor Total</th>
+            <th>Valor sem Instalação</th>
             <th>Taxa de Instalação</th>
             <th>Custo Total</th>
             <th>Lucro</th>
@@ -233,6 +373,7 @@ function Reports({ budgets }) {
                 <td>{item.date}</td>
                 <td>{item.customerName}</td>
                 <td>{item.saleValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>{item.saleValueWithoutInstallation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.installationFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>{item.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
@@ -249,16 +390,43 @@ function Reports({ budgets }) {
                   <td colSpan="9">
                     <div className="product-details">
                       <h4>Detalhes dos Produtos</h4>
-                      {item.productDetails.map((prod, index) => (
+                      {item.produtos.map((prod, index) => (
                         <div key={index} className="product-detail-item">
                           <p>Produto {index + 1}:</p>
                           <p>Dimensões: {prod.largura}m x {prod.altura}m</p>
-                          <p>Custo: {prod.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                          <p>Instalação: {prod.instalacao ? prod.valor_instalacao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não'}</p>
-                          <p>Bandô: {prod.bando ? 'Incluído' : 'Não incluído'}</p>
-                          {prod.bando && prod.valor_bando && (
-                            <p>Valor do Bandô: {parseFloat(prod.valor_bando).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                          {prod.cost.dimensions.usedMinimum && (
+                            <p>Dimensões calculadas: {prod.cost.dimensions.width.toFixed(2)}m x {prod.cost.dimensions.height.toFixed(2)}m</p>
                           )}
+                          <p>Custo do Produto: {prod.cost.productCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                          {prod.bando && (
+                            <>
+                              <p>Bandô:</p>
+                              <ul>
+                                <li>Custo: {prod.cost.bandoCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Venda: {prod.cost.bandoValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Lucro: {(prod.cost.bandoValue - prod.cost.bandoCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                              </ul>
+                            </>
+                          )}
+                          {prod.acessorios && prod.acessorios.length > 0 && (
+                            <>
+                              <p>Acessórios:</p>
+                              <ul>
+                                <li>Custo Total: {prod.cost.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Venda Total: {prod.cost.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Lucro: {(prod.cost.accessoriesValue - prod.cost.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Detalhes:</li>
+                                {prod.acessorios.map((acessorio, idx) => (
+                                  <li key={idx} style={{marginLeft: '20px'}}>
+                                    {acessorio.nome} - {acessorio.quantidade}x 
+                                    - Custo un.: {parseFloat(acessorio.preco_custo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    - Venda un.: {parseFloat(acessorio.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                          <p>Instalação: {prod.instalacao ? parseFloat(prod.valor_instalacao).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não'}</p>
                           <p>Subtotal: {parseFloat(prod.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
                       ))}

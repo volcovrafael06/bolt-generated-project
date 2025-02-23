@@ -222,8 +222,13 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
     // Add bandô value if selected
     if (product.bando) {
-      const bandoValue = width * bandoConfig.venda;
-      const bandoCusto = width * bandoConfig.custo;
+      const dimensions = calculateDimensions(
+        product.product,
+        product.width,
+        product.height
+      );
+      const bandoValue = dimensions.width * bandoConfig.venda;
+      const bandoCusto = dimensions.width * bandoConfig.custo;
       subtotal += bandoValue;
       if (product === currentProduct) {
         setCurrentProduct(prev => ({ 
