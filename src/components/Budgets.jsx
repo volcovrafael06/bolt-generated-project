@@ -243,119 +243,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }
   }, [isEditing, budgetId, initialProducts, initialAccessories]);
 
-  const calculateProductSubtotal = (product = currentProduct) => {
-    if (!product.product || !product.width) return 0;
-
-    let subtotal = 0;
-    
-    const dimensions = calculateDimensions(
-      product.product,
-      product.width,
-      product.height
-    );
-
-    const width = dimensions.width;
-    const height = dimensions.height;
-    const price = parseFloat(product.product.preco_venda) || 0;
-
-    if (product.product.modelo.toUpperCase() === 'WAVE') {
-      subtotal = width * price;
-    } else if (width && height) {
-      subtotal = width * height * price;
-    }
-
-    if (product.bando) {
-      const dimensions = calculateDimensions(
-        product.product,
-        product.width,
-        product.height
-      );
-      const bandoValue = dimensions.width * bandoConfig.venda;
-      const bandoCusto = dimensions.width * bandoConfig.custo;
-      subtotal += bandoValue;
-      if (product === currentProduct) {
-        setCurrentProduct(prev => ({ 
-          ...prev, 
-          bandoValue,
-          bandoCusto 
-        }));
-      }
-    }
-
-    if (product.installation) {
-      subtotal += parseFloat(product.installationValue) || 0;
-    }
-
-    if (product === currentProduct) {
-      setCurrentProduct(prev => ({ 
-        ...prev, 
-        subtotal,
-        calculatedWidth: dimensions.width,
-        calculatedHeight: dimensions.height,
-        usedMinimum: dimensions.usedMinimum
-      }));
-    }
-
-    return subtotal;
-  };
-
-  const handleProductDimensionChange = (e) => {
-    const { name, value } = e.target;
-    setCurrentProduct(prev => {
-      const updates = { ...prev, [name]: value };
-      
-      if (name === 'width' || name === 'height') {
-        if (updates.product) {
-          calculateProductSubtotal(updates);
-        }
-      }
-      
-      return updates;
-    });
-  };
-
-  useEffect(() => {
-    if (currentProduct.product && (currentProduct.width || currentProduct.height)) {
-      calculateProductSubtotal();
-    }
-  }, [currentProduct.product, currentProduct.width, currentProduct.height, currentProduct.bando, currentProduct.installation, currentProduct.installationValue]);
-
-  const calculateAccessorySubtotal = () => {
-    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) return;
-
-    const quantity = parseInt(currentAccessory.quantity, 10) || 1;
-    const color = currentAccessory.accessory.colors.find(c => c.color === currentAccessory.color);
-
-    if (!color) {
-      setCurrentAccessory(prev => ({ ...prev, subtotal: 0 }));
-      return;
-    }
-
-    const subtotal = quantity * (parseFloat(color.sale_price) || 0);
-    setCurrentAccessory(prev => ({ ...prev, subtotal }));
-  };
-
-  const fetchAccessories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('accessories')  // Correct table name from database
-        .select('*')
-        .order('name');      // Add ordering
-      
-      if (error) throw error;
-      
-      if (data) {
-        console.log('Fetched accessories:', data);  // Add logging for debugging
-        setAccessoriesList(data);
-      } else {
-        setAccessoriesList([]);
-      }
-    } catch (error) {
-      console.error('Error fetching accessories:', error);
-      setError('Erro ao carregar acessórios');
-    }
-  };
-
   const calculateDimensions = (product, width, height) => {
     const inputWidth = parseFloat(width) || 0;
     const inputHeight = parseFloat(height) || 0;
@@ -383,6 +270,156 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     };
   };
 
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setCurrentProduct(prev => {
+      const updates = {
+        ...prev,
+        [name]: checked
+      };
+
+      if (name === 'bando' && checked) {
+        // Calculate bando values when checkbox is checked
+        const dimensions = calculateDimensions(
+          prev.product,
+          prev.width,
+          prev.height
+        );
+        updates.bandoValue = dimensions.width * bandoConfig.venda;
+        updates.bandoCusto = dimensions.width * bandoConfig.custo;
+      } else if (name === 'bando' && !checked) {
+        // Reset bando values when unchecked
+        updates.bandoValue = 0;
+        updates.bandoCusto = 0;
+      }
+      
+      // Recalculate subtotal whenever checkboxes change
+      const newSubtotal = calculateProductSubtotal(updates);
+      
+      return {
+        ...updates,
+        subtotal: newSubtotal
+      };
+    });
+  };
+
+  const calculateProductSubtotal = (product = currentProduct) => {
+    if (!product.product) return 0;
+
+    let subtotal = 0;
+    
+    const dimensions = calculateDimensions(
+      product.product,
+      product.width,
+      product.height
+    );
+
+    const width = dimensions.width;
+    const height = dimensions.height;
+
+    if (product.product.modelo.toUpperCase() === 'WAVE') {
+      // For Wave model, get price based on height
+      const wave_pricing = JSON.parse(product.product.wave_pricing_data || '[]');
+      const heightInMeters = parseFloat(height) || 0;
+      
+      let basePrice = 0;
+      for (const tier of wave_pricing) {
+        if (heightInMeters >= tier.min_height && heightInMeters <= tier.max_height) {
+          basePrice = parseFloat(tier.price) || 0;
+          // Apply profit margin
+          const margin = parseFloat(product.product.margem_lucro) || 0;
+          basePrice = basePrice + (basePrice * margin / 100);
+          break;
+        }
+      }
+      
+      // Calculate total based on height
+      subtotal = heightInMeters * basePrice;
+    } else {
+      const price = parseFloat(product.product.preco_venda) || 0;
+      if (width && height) {
+        subtotal = width * height * price;
+      }
+    }
+
+    // Add bando value if checked
+    if (product.bando && product.bandoValue) {
+      subtotal += parseFloat(product.bandoValue);
+    }
+
+    // Add installation value if checked
+    if (product.installation && product.installationValue) {
+      subtotal += parseFloat(product.installationValue);
+    }
+
+    return subtotal;
+  };
+
+  useEffect(() => {
+    // Recalculate bando value when dimensions change
+    if (currentProduct.bando && currentProduct.product && (currentProduct.width || currentProduct.height)) {
+      const dimensions = calculateDimensions(
+        currentProduct.product,
+        currentProduct.width,
+        currentProduct.height
+      );
+      
+      setCurrentProduct(prev => {
+        const bandoValue = dimensions.width * bandoConfig.venda;
+        const bandoCusto = dimensions.width * bandoConfig.custo;
+        const updates = {
+          ...prev,
+          bandoValue,
+          bandoCusto
+        };
+        
+        const newSubtotal = calculateProductSubtotal(updates);
+        return {
+          ...updates,
+          subtotal: newSubtotal
+        };
+      });
+    }
+  }, [currentProduct.width, currentProduct.height, bandoConfig]);
+
+  const handleProductDimensionChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentProduct(prev => {
+      const updates = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Recalculate subtotal whenever dimensions change
+      const newSubtotal = calculateProductSubtotal({
+        ...updates
+      });
+      
+      return {
+        ...updates,
+        subtotal: newSubtotal
+      };
+    });
+  };
+
+  const handleInstallationValueChange = (e) => {
+    const { value } = e.target;
+    setCurrentProduct(prev => {
+      const updates = {
+        ...prev,
+        installationValue: value
+      };
+      
+      // Recalculate subtotal when installation value changes
+      const newSubtotal = calculateProductSubtotal(updates);
+      
+      return {
+        ...updates,
+        subtotal: newSubtotal
+      };
+    });
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
@@ -404,6 +441,21 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       
       return updated;
     });
+  };
+
+  const calculateAccessorySubtotal = () => {
+    if (!currentAccessory.accessory || !currentAccessory.color || !currentAccessory.quantity) return;
+
+    const quantity = parseInt(currentAccessory.quantity, 10) || 1;
+    const color = currentAccessory.accessory.colors.find(c => c.color === currentAccessory.color);
+
+    if (!color) {
+      setCurrentAccessory(prev => ({ ...prev, subtotal: 0 }));
+      return;
+    }
+
+    const subtotal = quantity * (parseFloat(color.sale_price) || 0);
+    setCurrentAccessory(prev => ({ ...prev, subtotal }));
   };
 
   const handleCustomerChange = (selectedCustomer) => {
@@ -462,6 +514,27 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       quantity: 1,
       subtotal: 0
     }));
+  };
+
+  const fetchAccessories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('accessories')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      
+      if (data) {
+        console.log('Fetched accessories:', data);
+        setAccessoriesList(data);
+      } else {
+        setAccessoriesList([]);
+      }
+    } catch (error) {
+      console.error('Error fetching accessories:', error);
+      setError('Erro ao carregar acessórios');
+    }
   };
 
   const handleAddProduct = () => {
@@ -728,6 +801,114 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
   const totalValue = productsTotal + accessoriesTotal;
 
+  const renderDimensionFields = () => {
+    const isWaveModel = currentProduct.product?.modelo.toUpperCase() === 'WAVE';
+
+    return (
+      <>
+        <div className="form-group">
+          <label>Largura (m):</label>
+          <input
+            type="number"
+            name="width"
+            step="0.01"
+            value={currentProduct.width}
+            onChange={handleProductDimensionChange}
+            required
+          />
+        </div>
+
+        {(isWaveModel || currentProduct.product?.metodo_calculo !== 'linear') && (
+          <div className="form-group">
+            <label>Altura (m):</label>
+            <input
+              type="number"
+              name="height"
+              step="0.01"
+              value={currentProduct.height}
+              onChange={handleProductDimensionChange}
+              required={isWaveModel}
+            />
+          </div>
+        )}
+
+        {isWaveModel && currentProduct.height && (
+          <div className="wave-price-info">
+            <label>Faixa de preço atual:</label>
+            <div className="price-range">
+              {getCurrentWavePriceRange(currentProduct.height)}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const getCurrentWavePriceRange = (height) => {
+    if (!currentProduct.product?.wave_pricing_data) return 'Preço não definido';
+    
+    const heightNum = parseFloat(height);
+    if (!heightNum) return 'Altura inválida';
+
+    const wave_pricing = JSON.parse(currentProduct.product.wave_pricing_data || '[]');
+    for (const tier of wave_pricing) {
+      if (heightNum >= tier.min_height && heightNum <= tier.max_height) {
+        const basePrice = parseFloat(tier.price) || 0;
+        const margin = parseFloat(currentProduct.product.margem_lucro) || 0;
+        const finalPrice = basePrice + (basePrice * margin / 100);
+        return `R$ ${finalPrice.toFixed(2)} por metro de altura`;
+      }
+    }
+    
+    return 'Altura fora das faixas de preço definidas';
+  };
+
+  const renderAdditionalOptions = () => {
+    return (
+      <div className="additional-options">
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              name="bando"
+              checked={currentProduct.bando}
+              onChange={handleCheckboxChange}
+            />
+            Bando
+          </label>
+          {currentProduct.bando && (
+            <div className="bando-info">
+              <span>Valor do Bando: R$ {currentProduct.bandoValue?.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              name="installation"
+              checked={currentProduct.installation}
+              onChange={handleCheckboxChange}
+            />
+            Instalação
+          </label>
+          {currentProduct.installation && (
+            <div className="installation-value">
+              <input
+                type="number"
+                step="0.01"
+                value={currentProduct.installationValue}
+                onChange={handleInstallationValueChange}
+                placeholder="Valor da instalação"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>Erro: {error}</p>;
 
@@ -818,59 +999,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
             {currentProduct.product && (
               <>
-                <div className="product-measurements">
-                  <input
-                    type="number"
-                    name="width"
-                    value={currentProduct.width}
-                    onChange={handleProductDimensionChange}
-                    placeholder="Largura"
-                    step="0.01"
-                  />
-                  {currentProduct.product.modelo !== 'WAVE' && (
-                    <input
-                      type="number"
-                      name="height"
-                      value={currentProduct.height}
-                      onChange={handleProductDimensionChange}
-                      placeholder="Altura"
-                      step="0.01"
-                    />
-                  )}
-                </div>
-
-                <div className="additional-options">
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="bando"
-                      checked={currentProduct.bando}
-                      onChange={handleInputChange}
-                    />
-                    Bandô
-                  </label>
-
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="installation"
-                      checked={currentProduct.installation}
-                      onChange={handleInputChange}
-                    />
-                    Instalação
-                  </label>
-
-                  {currentProduct.installation && (
-                    <input
-                      type="number"
-                      name="installationValue"
-                      value={currentProduct.installationValue}
-                      onChange={handleInputChange}
-                      placeholder="Valor da instalação"
-                      step="0.01"
-                    />
-                  )}
-                </div>
+                {renderDimensionFields()}
+                {renderAdditionalOptions()}
 
                 {currentProduct.subtotal > 0 && (
                   <p>Subtotal do produto: R$ {currentProduct.subtotal.toFixed(2)}</p>

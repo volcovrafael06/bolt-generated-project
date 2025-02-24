@@ -12,11 +12,17 @@ function Products() {
     cost_price: '0',
     profit_margin: '0',
     sale_price: '0',
-    calculation_method: 'm2',
+    calculation_method: '',
     altura_minima: '',
     largura_minima: '',
     largura_maxima: '',
-    area_minima: ''
+    area_minima: '',
+    wave_pricing: [
+      { min_height: 0, max_height: 2.5, price: '', sale_price: '' },
+      { min_height: 2.501, max_height: 4, price: '', sale_price: '' },
+      { min_height: 4.001, max_height: 5, price: '', sale_price: '' },
+      { min_height: 5.001, max_height: 6, price: '', sale_price: '' }
+    ]
   };
 
   const [products, setProducts] = useState([]);
@@ -69,8 +75,8 @@ function Products() {
   };
 
   const loadProducts = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await produtoService.getAll();
       const formattedData = data.map(item => ({
         id: item.id,
@@ -79,14 +85,15 @@ function Products() {
         material: item.tecido,
         name: item.nome,
         code: item.codigo,
-        cost_price: item.preco_custo,
-        profit_margin: item.margem_lucro,
-        sale_price: item.preco_venda,
+        cost_price: item.preco_custo?.toString() || '0',
+        profit_margin: item.margem_lucro?.toString() || '0',
+        sale_price: item.preco_venda?.toString() || '0',
         calculation_method: item.metodo_calculo,
         altura_minima: item.altura_minima || '',
         largura_minima: item.largura_minima || '',
         largura_maxima: item.largura_maxima || '',
-        area_minima: item.area_minima || ''
+        area_minima: item.area_minima || '',
+        wave_pricing: item.wave_pricing_data ? JSON.parse(item.wave_pricing_data) : initialProductState.wave_pricing
       }));
       setProducts(formattedData);
     } catch (err) {
@@ -97,9 +104,31 @@ function Products() {
   };
 
   const calculateSalePrice = (costPrice, profitMargin) => {
+    if (newProduct.model.toUpperCase() === 'WAVE') {
+      const basePrice = getWavePrice(parseFloat(newProduct.altura_minima) || 0);
+      const margin = parseFloat(profitMargin) || 0;
+      const profitAmount = (basePrice * margin) / 100;
+      return basePrice + profitAmount;
+    }
     const cost = parseFloat(costPrice) || 0;
     const margin = parseFloat(profitMargin) || 0;
     return cost + (cost * (margin / 100));
+  };
+
+  const getWavePrice = (height) => {
+    const pricing = newProduct.wave_pricing;
+    for (const tier of pricing) {
+      if (height >= tier.min_height && height <= tier.max_height) {
+        return tier.price;
+      }
+    }
+    return 0;
+  };
+
+  const calculateWaveSalePrice = (price) => {
+    const margin = parseFloat(newProduct.profit_margin) || 0;
+    const profitAmount = (price * margin) / 100;
+    return (price + profitAmount).toFixed(2);
   };
 
   const handleInputChange = (e) => {
@@ -123,14 +152,37 @@ function Products() {
 
       const updates = { ...prev, [name]: newValue };
 
-      // Update sale price when cost price or profit margin changes
-      if (name === 'cost_price' || name === 'profit_margin') {
-        const costPrice = name === 'cost_price' ? value : prev.cost_price;
-        const profitMargin = name === 'profit_margin' ? value : prev.profit_margin;
-        updates.sale_price = calculateSalePrice(costPrice, profitMargin);
+      // If model is changed to WAVE, set calculation method to altura
+      if (name === 'model' && value.toUpperCase() === 'WAVE') {
+        updates.calculation_method = 'altura';
+        updates.cost_price = '0';
+      }
+
+      // Update sale price when cost price, profit margin, or height (for Wave) changes
+      if (name === 'cost_price' || name === 'profit_margin' || 
+         (name === 'altura_minima' && updates.model.toUpperCase() === 'WAVE')) {
+        updates.sale_price = calculateSalePrice(
+          name === 'cost_price' ? value : prev.cost_price,
+          name === 'profit_margin' ? value : prev.profit_margin
+        );
       }
 
       return updates;
+    });
+  };
+
+  const handleWavePriceChange = (index, value) => {
+    setNewProduct(prev => {
+      const updatedPricing = [...prev.wave_pricing];
+      updatedPricing[index] = {
+        ...updatedPricing[index],
+        price: value,
+        sale_price: calculateWaveSalePrice(parseFloat(value) || 0)
+      };
+      return {
+        ...prev,
+        wave_pricing: updatedPricing
+      };
     });
   };
 
@@ -143,11 +195,35 @@ function Products() {
         return;
       }
 
+      // Special handling for Wave model
+      if (newProduct.model.toUpperCase() === 'WAVE') {
+        // Validate Wave pricing
+        const isWavePricingValid = newProduct.wave_pricing.every(tier => 
+          tier.price && !isNaN(parseFloat(tier.price)) && parseFloat(tier.price) > 0
+        );
+        
+        if (!isWavePricingValid) {
+          setError('Por favor, preencha todos os preços de custo para o modelo Wave');
+          return;
+        }
+
+        newProduct.calculation_method = 'altura';
+        // Update sale prices before saving
+        newProduct.wave_pricing = newProduct.wave_pricing.map(tier => ({
+          ...tier,
+          sale_price: calculateWaveSalePrice(parseFloat(tier.price))
+        }));
+      }
+
       // Validate numeric fields
       const numericFields = {
-        'Preço de Custo': newProduct.cost_price,
         'Margem de Lucro': newProduct.profit_margin
       };
+
+      // Only validate cost_price if not Wave model
+      if (newProduct.model.toUpperCase() !== 'WAVE') {
+        numericFields['Preço de Custo'] = newProduct.cost_price;
+      }
 
       for (const [fieldName, value] of Object.entries(numericFields)) {
         if (value === '' || isNaN(value)) {
@@ -173,7 +249,8 @@ function Products() {
       setShowModal(false);
       setError(null);
     } catch (err) {
-      setError('Erro ao salvar produto: ' + err.message);
+      console.error('Error saving product:', err);
+      setError('Erro ao salvar produto: ' + (err.message || 'Erro desconhecido'));
     }
   };
 
@@ -356,144 +433,237 @@ function Products() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Tecido:</label>
-                  <div className="input-with-button">
-                    <select
-                      name="material"
-                      value={newProduct.material}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Selecione um tecido</option>
-                      {materialOptions.map((option, index) => (
-                        <option key={index} value={option}>{option}</option>
-                      ))}
-                    </select>
-                    <button type="button" onClick={() => handleAddOption('tecido')}>
-                      + Novo
-                    </button>
-                  </div>
-                </div>
+                {/* Wave Model Fields */}
+                {newProduct.model.toUpperCase() === 'WAVE' ? (
+                  <>
+                    <div className="form-group">
+                      <label>Tecido:</label>
+                      <input
+                        type="text"
+                        name="material"
+                        value={newProduct.material}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Nome:</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={newProduct.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Nome:</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={newProduct.name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Código:</label>
-                  <input
-                    type="text"
-                    name="code"
-                    value={newProduct.code}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Código:</label>
+                      <input
+                        type="text"
+                        name="code"
+                        value={newProduct.code}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Preço de Custo:</label>
-                  <input
-                    type="number"
-                    name="cost_price"
-                    value={newProduct.cost_price}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    required
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Margem de Lucro (%):</label>
+                      <input
+                        type="number"
+                        name="profit_margin"
+                        value={newProduct.profit_margin}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Margem de Lucro (%):</label>
-                  <input
-                    type="number"
-                    name="profit_margin"
-                    value={newProduct.profit_margin}
-                    onChange={handleInputChange}
-                    step="0.1"
-                    min="0"
-                    required
-                  />
-                </div>
+                    <div className="wave-pricing-section">
+                      <h4>Preços por Altura</h4>
+                      <div className="wave-price-row">
+                        <div className="wave-price-group">
+                          <label>Preço até 2,5m:</label>
+                          <div className="price-inputs">
+                            <div className="input-group">
+                              <label>Custo:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[0].price}
+                                onChange={(e) => handleWavePriceChange(0, e.target.value)}
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                            </div>
+                            <div className="input-group">
+                              <label>Venda:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[0].sale_price}
+                                disabled
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                <div className="form-group">
-                  <label>Preço de Venda:</label>
-                  <input
-                    type="number"
-                    value={newProduct.sale_price}
-                    readOnly
-                    disabled
-                  />
-                </div>
+                        <div className="wave-price-group">
+                          <label>Preço de 2,501m a 4m:</label>
+                          <div className="price-inputs">
+                            <div className="input-group">
+                              <label>Custo:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[1].price}
+                                onChange={(e) => handleWavePriceChange(1, e.target.value)}
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                            </div>
+                            <div className="input-group">
+                              <label>Venda:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[1].sale_price}
+                                disabled
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                <div className="form-group">
-                  <label>Método de Cálculo:</label>
-                  <select
-                    name="calculation_method"
-                    value={newProduct.calculation_method}
-                    onChange={handleInputChange}
-                  >
-                    <option value="m2">Metro Quadrado (m²)</option>
-                    <option value="linear">Metro Linear</option>
-                    <option value="unidade">Unidade</option>
-                  </select>
-                </div>
+                        <div className="wave-price-group">
+                          <label>Preço de 4,001m a 5m:</label>
+                          <div className="price-inputs">
+                            <div className="input-group">
+                              <label>Custo:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[2].price}
+                                onChange={(e) => handleWavePriceChange(2, e.target.value)}
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                            </div>
+                            <div className="input-group">
+                              <label>Venda:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[2].sale_price}
+                                disabled
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                <div className="form-group">
-                  <label>Altura Mínima (m):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="altura_minima"
-                    value={newProduct.altura_minima}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                  />
-                </div>
+                        <div className="wave-price-group">
+                          <label>Preço de 5,001m a 6m:</label>
+                          <div className="price-inputs">
+                            <div className="input-group">
+                              <label>Custo:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[3].price}
+                                onChange={(e) => handleWavePriceChange(3, e.target.value)}
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                            </div>
+                            <div className="input-group">
+                              <label>Venda:</label>
+                              <input
+                                type="number"
+                                value={newProduct.wave_pricing[3].sale_price}
+                                disabled
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="form-group">
+                      <label>Tecido:</label>
+                      <select
+                        name="material"
+                        value={newProduct.material}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Selecione o tecido</option>
+                        <option value="TRANSLUCIDO">TRANSLUCIDO</option>
+                      </select>
+                    </div>
 
-                <div className="form-group">
-                  <label>Largura Mínima (m):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="largura_minima"
-                    value={newProduct.largura_minima}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Nome:</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={newProduct.name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Largura Máxima (m):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="largura_maxima"
-                    value={newProduct.largura_maxima}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Código:</label>
+                      <input
+                        type="text"
+                        name="code"
+                        value={newProduct.code}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label>Área Mínima (m²):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="area_minima"
-                    value={newProduct.area_minima}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                  />
-                </div>
+                    <div className="form-group">
+                      <label>Preço de Custo:</label>
+                      <input
+                        type="number"
+                        name="cost_price"
+                        value={newProduct.cost_price}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Margem de Lucro (%):</label>
+                      <input
+                        type="number"
+                        name="profit_margin"
+                        value={newProduct.profit_margin}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Preço de Venda:</label>
+                      <input
+                        type="number"
+                        name="sale_price"
+                        value={newProduct.sale_price}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        disabled
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="form-actions">

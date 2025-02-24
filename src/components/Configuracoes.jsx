@@ -24,10 +24,23 @@ function Configuracoes({ setCompanyLogo }) {
   const [error, setError] = useState(null);
   const [bandoCusto, setBandoCusto] = useState(80);
   const [bandoVenda, setBandoVenda] = useState(120);
+  const [trilhoRedondoCusto, setTrilhoRedondoCusto] = useState(0);
+  const [trilhoRedondoVenda, setTrilhoRedondoVenda] = useState(0);
+  const [trilhoSlimCusto, setTrilhoSlimCusto] = useState(0);
+  const [trilhoSlimVenda, setTrilhoSlimVenda] = useState(0);
+  const [trilhoQuadradoCusto, setTrilhoQuadradoCusto] = useState(0);
+  const [trilhoQuadradoVenda, setTrilhoQuadradoVenda] = useState(0);
+  const [trilhoRedondoSemComandoCusto, setTrilhoRedondoSemComandoCusto] = useState(0);
+  const [trilhoRedondoSemComandoVenda, setTrilhoRedondoSemComandoVenda] = useState(0);
+  const [trilhoSlimSemComandoCusto, setTrilhoSlimSemComandoCusto] = useState(0);
+  const [trilhoSlimSemComandoVenda, setTrilhoSlimSemComandoVenda] = useState(0);
+  const [trilhoMotorizadoCusto, setTrilhoMotorizadoCusto] = useState(0);
+  const [trilhoMotorizadoVenda, setTrilhoMotorizadoVenda] = useState(0);
 
   useEffect(() => {
     loadConfiguracoes();
     fetchSellers();
+    loadRailPricing();
   }, [setCompanyLogo]);
 
   const loadConfiguracoes = async () => {
@@ -71,6 +84,50 @@ function Configuracoes({ setCompanyLogo }) {
       console.error("Error fetching sellers:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRailPricing = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rail_pricing')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data) {
+        data.forEach(item => {
+          switch (item.rail_type) {
+            case 'trilho_redondo_comando':
+              setTrilhoRedondoCusto(item.cost_price);
+              setTrilhoRedondoVenda(item.sale_price);
+              break;
+            case 'trilho_slim_comando':
+              setTrilhoSlimCusto(item.cost_price);
+              setTrilhoSlimVenda(item.sale_price);
+              break;
+            case 'trilho_quadrado_gancho':
+              setTrilhoQuadradoCusto(item.cost_price);
+              setTrilhoQuadradoVenda(item.sale_price);
+              break;
+            case 'trilho_redondo_sem_comando':
+              setTrilhoRedondoSemComandoCusto(item.cost_price);
+              setTrilhoRedondoSemComandoVenda(item.sale_price);
+              break;
+            case 'trilho_slim_sem_comando':
+              setTrilhoSlimSemComandoCusto(item.cost_price);
+              setTrilhoSlimSemComandoVenda(item.sale_price);
+              break;
+            case 'trilho_motorizado':
+              setTrilhoMotorizadoCusto(item.cost_price);
+              setTrilhoMotorizadoVenda(item.sale_price);
+              break;
+          }
+        });
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error("Error loading rail pricing:", err);
     }
   };
 
@@ -244,6 +301,61 @@ function Configuracoes({ setCompanyLogo }) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveRailPricing = async () => {
+    try {
+      const updates = [
+        {
+          rail_type: 'trilho_redondo_comando',
+          cost_price: trilhoRedondoCusto,
+          sale_price: trilhoRedondoVenda
+        },
+        {
+          rail_type: 'trilho_slim_comando',
+          cost_price: trilhoSlimCusto,
+          sale_price: trilhoSlimVenda
+        },
+        {
+          rail_type: 'trilho_quadrado_gancho',
+          cost_price: trilhoQuadradoCusto,
+          sale_price: trilhoQuadradoVenda
+        },
+        {
+          rail_type: 'trilho_redondo_sem_comando',
+          cost_price: trilhoRedondoSemComandoCusto,
+          sale_price: trilhoRedondoSemComandoVenda
+        },
+        {
+          rail_type: 'trilho_slim_sem_comando',
+          cost_price: trilhoSlimSemComandoCusto,
+          sale_price: trilhoSlimSemComandoVenda
+        },
+        {
+          rail_type: 'trilho_motorizado',
+          cost_price: trilhoMotorizadoCusto,
+          sale_price: trilhoMotorizadoVenda
+        }
+      ];
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('rail_pricing')
+          .update({ 
+            cost_price: update.cost_price,
+            sale_price: update.sale_price
+          })
+          .eq('rail_type', update.rail_type);
+
+        if (error) throw error;
+      }
+
+      setSaveMessage('Configurações salvas com sucesso!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error saving rail pricing:", err);
     }
   };
 
@@ -432,11 +544,156 @@ function Configuracoes({ setCompanyLogo }) {
             />
           </div>
         </div>
+        <div className="settings-section">
+          <h3>Configurações de Preços dos Trilhos</h3>
+          <div className="settings-grid">
+            <div className="settings-group">
+              <h4>Trilho Redondo com Comando</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoRedondoCusto}
+                  onChange={(e) => setTrilhoRedondoCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoRedondoVenda}
+                  onChange={(e) => setTrilhoRedondoVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h4>Trilho Redondo sem Comando</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoRedondoSemComandoCusto}
+                  onChange={(e) => setTrilhoRedondoSemComandoCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoRedondoSemComandoVenda}
+                  onChange={(e) => setTrilhoRedondoSemComandoVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h4>Trilho Slim com Comando</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoSlimCusto}
+                  onChange={(e) => setTrilhoSlimCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoSlimVenda}
+                  onChange={(e) => setTrilhoSlimVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h4>Trilho Slim sem Comando</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoSlimSemComandoCusto}
+                  onChange={(e) => setTrilhoSlimSemComandoCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoSlimSemComandoVenda}
+                  onChange={(e) => setTrilhoSlimSemComandoVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h4>Trilho Quadrado com Rodízio em Gancho</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoQuadradoCusto}
+                  onChange={(e) => setTrilhoQuadradoCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoQuadradoVenda}
+                  onChange={(e) => setTrilhoQuadradoVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="settings-group">
+              <h4>Trilho Motorizado</h4>
+              <div className="input-group">
+                <label>Preço de Custo (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoMotorizadoCusto}
+                  onChange={(e) => setTrilhoMotorizadoCusto(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+              <div className="input-group">
+                <label>Preço de Venda (por metro):</label>
+                <input
+                  type="number"
+                  value={trilhoMotorizadoVenda}
+                  onChange={(e) => setTrilhoMotorizadoVenda(Number(e.target.value))}
+                  step="0.01"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="form-actions">
           <button type="button" onClick={() => setShowManageSellers(!showManageSellers)}>
             Gerenciar Vendedores
           </button>
-          <button type="submit" disabled={loading}>
+          <button
+            className="save-button"
+            onClick={async () => {
+              await Promise.all([
+                handleSave(),
+                saveRailPricing()
+              ]);
+            }}
+            disabled={loading || !!cnpjErrorMessage}
+          >
             {loading ? 'Salvando...' : 'Salvar Configurações'}
           </button>
         </div>
