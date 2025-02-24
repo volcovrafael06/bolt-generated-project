@@ -198,19 +198,15 @@ function BudgetDetailsPage({ companyLogo }) {
             <div className="company-info">
               <p>{companyData.nome_fantasia}</p>
               <p>{companyData.endereco}</p>
-              <p>contato@persiflexcortinas.com.br</p>
-              <p>Tel: (11) 99917-5419</p>
+              <p>{companyData.email}</p>
+              <p>Tel: {companyData.telefone}</p>
             </div>
           )}
         </div>
-
         <div className="budget-header">
-          <h1 className="budget-number">Orçamento #{budget.id}</h1>
-          <div className="budget-date">
-            Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}
-            <br />
-            Válido até: {calculateValidadeDate(budget.created_at, budget.validade_dias)}
-          </div>
+          <h2>Orçamento #{budget.numero_orcamento || budget.id}</h2>
+          <p>Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}</p>
+          <p>Válido até: {calculateValidadeDate(budget.created_at, companyData?.validade_orcamento || 7)}</p>
         </div>
 
         <div className="client-section">

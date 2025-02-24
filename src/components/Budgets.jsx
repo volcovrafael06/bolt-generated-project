@@ -69,26 +69,73 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   }, [updateParentCustomers]);
 
   useEffect(() => {
-    setProducts(initialProducts || []);
-  }, [initialProducts]);
-
-  useEffect(() => {
-    setAccessoriesList(initialAccessories || []);
-  }, [initialAccessories]);
-
-  useEffect(() => {
     const loadInitialData = async () => {
-      if (!initialCustomers || !initialProducts || !initialAccessories) {
-        await Promise.all([
-          fetchCustomers(),
-          fetchProducts(),
-          fetchAccessories()
+      try {
+        setLoading(true);
+        const [customersResponse, productsResponse, accessoriesResponse] = await Promise.all([
+          !initialCustomers && supabase.from('clientes').select('*').order('name'),
+          !initialProducts && supabase.from('produtos').select('*'),
+          !initialAccessories && supabase.from('accessories').select('*').order('name')
         ]);
+
+        if (customersResponse && customersResponse.error) throw customersResponse.error;
+        if (productsResponse && productsResponse.error) throw productsResponse.error;
+        if (accessoriesResponse && accessoriesResponse.error) throw accessoriesResponse.error;
+
+        if (customersResponse) {
+          setLocalCustomers(customersResponse.data || []);
+          updateParentCustomers?.(customersResponse.data || []);
+        }
+        
+        if (productsResponse) {
+          setProducts(productsResponse.data || []);
+        }
+        
+        if (accessoriesResponse) {
+          setAccessoriesList(accessoriesResponse.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        setError('Erro ao carregar dados iniciais');
+      } finally {
+        setLoading(false);
       }
     };
 
     loadInitialData();
-  }, [initialCustomers, initialProducts, initialAccessories]);
+  }, [initialCustomers, initialProducts, initialAccessories, updateParentCustomers]);
+
+  useEffect(() => {
+    const fetchLatestProducts = async () => {
+      try {
+        const { data, error } = await supabase.from('produtos').select('*');
+        if (error) throw error;
+        setProducts(data || []);
+      } catch (error) {
+        console.error('Error fetching latest products:', error);
+      }
+    };
+
+    const productsSubscription = supabase
+      .channel('produtos_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'produtos' 
+        }, 
+        () => {
+          fetchLatestProducts();
+        }
+      )
+      .subscribe();
+
+    fetchLatestProducts();
+
+    return () => {
+      productsSubscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const loadBandoConfig = async () => {
@@ -120,7 +167,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         try {
           console.log('Loading budget for editing:', budgetId);
           
-          // Buscar o orçamento diretamente do Supabase
           const { data: budget, error } = await supabase
             .from('orcamentos')
             .select(`
@@ -147,7 +193,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
             products = JSON.parse(budget.produtos_json || '[]');
             accessories = JSON.parse(budget.acessorios_json || '[]');
             
-            // Adicionar informações completas dos produtos
             products = products.map(p => {
               const fullProduct = initialProducts?.find(prod => prod.id === p.produto_id) || {};
               return {
@@ -163,7 +208,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
               };
             });
 
-            // Adicionar informações completas dos acessórios
             accessories = accessories.map(a => {
               const fullAccessory = initialAccessories?.find(acc => acc.id === a.accessory_id) || {};
               return {
@@ -204,7 +248,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
     let subtotal = 0;
     
-    // Calcular dimensões considerando os mínimos
     const dimensions = calculateDimensions(
       product.product,
       product.width,
@@ -215,14 +258,12 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     const height = dimensions.height;
     const price = parseFloat(product.product.preco_venda) || 0;
 
-    // Calculate product value based on model
     if (product.product.modelo.toUpperCase() === 'WAVE') {
       subtotal = width * price;
     } else if (width && height) {
       subtotal = width * height * price;
     }
 
-    // Add bandô value if selected
     if (product.bando) {
       const dimensions = calculateDimensions(
         product.product,
@@ -241,7 +282,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       }
     }
 
-    // Add installation value if selected
     if (product.installation) {
       subtotal += parseFloat(product.installationValue) || 0;
     }
@@ -295,17 +335,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     setCurrentAccessory(prev => ({ ...prev, subtotal }));
   };
 
-  const fetchProducts = async () => {
-    try {
-      const { data, error } = await supabase.from('produtos').select('*');
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setError(error.message);
-    }
-  };
-
   const fetchAccessories = async () => {
     try {
       const { data, error } = await supabase
@@ -328,25 +357,19 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   };
 
   const calculateDimensions = (product, width, height) => {
-    // Converter strings para números
     const inputWidth = parseFloat(width) || 0;
     const inputHeight = parseFloat(height) || 0;
     
-    // Obter as dimensões mínimas do produto
     const minWidth = parseFloat(product.largura_minima) || 0;
     const minHeight = parseFloat(product.altura_minima) || 0;
     const minArea = parseFloat(product.area_minima) || 0;
     
-    // Calcular dimensões finais
     let finalWidth = Math.max(inputWidth, minWidth);
     let finalHeight = Math.max(inputHeight, minHeight);
     
-    // Calcular área
     const area = finalWidth * finalHeight;
     
-    // Se houver área mínima definida e a área calculada for menor
     if (minArea > 0 && area < minArea) {
-      // Ajustar proporcionalmente as dimensões para atingir a área mínima
       const ratio = Math.sqrt(minArea / area);
       finalWidth *= ratio;
       finalHeight *= ratio;
@@ -371,7 +394,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     setCurrentAccessory(prev => {
       const updated = { ...prev, [name]: value };
       
-      // If we have both color and quantity, calculate the subtotal
       if (updated.accessory && updated.color && updated.quantity) {
         const quantity = parseInt(updated.quantity, 10) || 1;
         const color = updated.accessory.colors.find(c => c.color === updated.color);
@@ -448,22 +470,18 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       return;
     }
 
-    // Add the new product
     const updatedProducts = [...newBudget.products, { ...currentProduct }];
 
-    // Calculate new total
     const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
     const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
     const newTotal = productsTotal + accessoriesTotal;
 
-    // Update budget with new product and total
     setNewBudget(prev => ({
       ...prev,
       products: updatedProducts,
       totalValue: newTotal
     }));
 
-    // Reset current product
     setCurrentProduct({
       product: null,
       width: '',
@@ -495,7 +513,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     const productToEdit = newBudget.products[index];
     setCurrentProduct(productToEdit);
     
-    // Remover o produto da lista
     const updatedProducts = newBudget.products.filter((_, i) => i !== index);
     const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
     const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
@@ -551,7 +568,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     const accessoryToEdit = newBudget.accessories[index];
     setCurrentAccessory(accessoryToEdit);
     
-    // Remover o acessório da lista
     const updatedAccessories = newBudget.accessories.filter((_, i) => i !== index);
     const productsTotal = newBudget.products.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
     const accessoriesTotal = updatedAccessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
@@ -580,7 +596,18 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       setLoading(true);
       setError(null);
 
-      // Clean up the products data to match the database structure
+      // Primeiro, vamos obter o próximo número de orçamento
+      let nextBudgetNumber = 985;
+      const { data: maxBudget } = await supabase
+        .from('orcamentos')
+        .select('numero_orcamento')
+        .order('numero_orcamento', { ascending: false })
+        .limit(1);
+
+      if (maxBudget && maxBudget.length > 0 && maxBudget[0].numero_orcamento) {
+        nextBudgetNumber = Math.max(985, maxBudget[0].numero_orcamento + 1);
+      }
+
       const cleanProducts = newBudget.products.map(product => ({
         produto_id: product.product.id,
         largura: parseFloat(product.width),
@@ -607,7 +634,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         observacao: newBudget.observation || '',
         acessorios_json: JSON.stringify(cleanAccessories),
         valor_negociado: newBudget.negotiatedValue,
-        status: isEditing ? undefined : 'pending' // Set status to 'pending' for new budgets, undefined for updates to keep existing value
+        status: isEditing ? undefined : 'pending',
+        numero_orcamento: isEditing ? undefined : nextBudgetNumber // Adiciona o número do orçamento apenas para novos orçamentos
       };
 
       console.log('Saving budget with data:', budgetData);
@@ -777,7 +805,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
               onChange={handleProductChange}
               labelKey="nome"
               valueKey="id"
-              onCreate={fetchProducts}
+              onCreate={fetchAccessories}
               showCreate={false}
             />
 

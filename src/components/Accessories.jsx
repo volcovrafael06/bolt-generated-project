@@ -18,6 +18,9 @@ function Accessories() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingAccessoryId, setEditingAccessoryId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchAccessories();
@@ -129,14 +132,25 @@ function Accessories() {
 
       console.log('Inserting accessory:', accessoryData);
 
-      const { data, error: insertError } = await supabase
-        .from('accessories')
-        .insert([accessoryData])
-        .select();
+      if (editingAccessoryId) {
+        const { data, error: updateError } = await supabase
+          .from('accessories')
+          .update([accessoryData])
+          .eq('id', editingAccessoryId);
 
-      if (insertError) throw insertError;
+        if (updateError) throw updateError;
 
-      console.log('Successfully added accessory:', data);
+        console.log('Successfully updated accessory:', data);
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('accessories')
+          .insert([accessoryData])
+          .select();
+
+        if (insertError) throw insertError;
+
+        console.log('Successfully added accessory:', data);
+      }
       
       // Reset form
       setNewAccessory({
@@ -153,6 +167,8 @@ function Accessories() {
       setError('Erro ao adicionar acessório: ' + error.message);
     } finally {
       setLoading(false);
+      setShowModal(false);
+      setEditingAccessoryId(null);
     }
   };
 
@@ -175,6 +191,38 @@ function Accessories() {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingAccessoryId(null);
+    setNewAccessory({
+      name: '',
+      unit: '',
+      colors: []
+    });
+    setNewColor({
+      color: '',
+      cost_price: 0,
+      profit_margin: 0,
+      sale_price: 0
+    });
+  };
+
+  const handleEditAccessory = (accessory) => {
+    setNewAccessory(accessory);
+    setEditingAccessoryId(accessory.id);
+    setShowModal(true);
+  };
+
+  // Filter accessories based on search term
+  const filteredAccessories = accessories.filter(accessory => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      accessory.name?.toLowerCase().includes(searchLower) ||
+      accessory.unit?.toLowerCase().includes(searchLower) ||
+      accessory.colors.some(color => color.color.toLowerCase().includes(searchLower))
+    );
+  });
+
   if (loading) {
     return <div className="loading">Carregando...</div>;
   }
@@ -184,196 +232,220 @@ function Accessories() {
   }
 
   return (
-    <div className="accessories-page">
-      <div className="page-header">
-        <h1 className="page-title">Gerenciar Acessórios</h1>
+    <div className="accessories-container">
+      <div className="accessories-header">
+        <h2>Acessórios Cadastrados</h2>
+        <div className="header-actions">
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Pesquisar acessórios..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <button className="add-accessory-button" onClick={() => setShowModal(true)}>
+            + Novo Acessório
+          </button>
+        </div>
       </div>
-      <form onSubmit={handleSubmit} className="accessories-form">
-        <div className="form-group">
-          <label htmlFor="accessoryName">Nome do Acessório:</label>
-          <input
-            type="text"
-            id="accessoryName"
-            name="name"
-            value={newAccessory.name}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="unit">Unidade:</label>
-          <input
-            type="text"
-            id="unit"
-            name="unit"
-            value={newAccessory.unit}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <div className="colors-section">
-          <h3>Cores e Preços</h3>
-          <div className="color-form">
-            <div className="form-group">
-              <label>Cor:</label>
-              <input
-                type="text"
-                name="color"
-                value={newColor.color}
-                onChange={handleColorInputChange}
-                placeholder="Nome da cor"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Preço de Custo:</label>
-              <input
-                type="number"
-                step="0.01"
-                name="cost_price"
-                value={newColor.cost_price}
-                onChange={handleColorInputChange}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Margem de Lucro (%):</label>
-              <input
-                type="number"
-                step="0.01"
-                name="profit_margin"
-                value={newColor.profit_margin}
-                onChange={handleColorInputChange}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Preço de Venda:</label>
-              <input
-                type="number"
-                step="0.01"
-                name="sale_price"
-                value={newColor.sale_price}
-                readOnly
-                placeholder="0.00"
-              />
-            </div>
-
-            <button type="button" onClick={handleAddColor}>
-              Adicionar Cor
-            </button>
-          </div>
-
-          <div className="added-colors">
-            <h4>Cores Adicionadas:</h4>
-            <table className="colors-table">
-              <thead>
-                <tr>
-                  <th>Cor</th>
-                  <th>Preço Custo</th>
-                  <th>Margem</th>
-                  <th>Preço Venda</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {newAccessory.colors.map((color, index) => (
-                  <tr key={index}>
-                    <td>{color.color}</td>
-                    <td>R$ {parseFloat(color.cost_price).toFixed(2)}</td>
-                    <td>{parseFloat(color.profit_margin).toFixed(2)}%</td>
-                    <td>R$ {parseFloat(color.sale_price).toFixed(2)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteColor(index)}
-                        className="delete-button"
-                      >
-                        Remover
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <button type="submit" className="button" disabled={loading}>
-          {loading ? 'Salvando...' : 'Salvar Acessório'}
-        </button>
-      </form>
 
       <div className="accessories-list">
-        <h3>Acessórios Cadastrados</h3>
-        
-        {loading && <p>Carregando acessórios...</p>}
-        
-        {error && (
-          <div className="error-message">
-            {error}
-            <button onClick={fetchAccessories} className="retry-button">
-              Tentar Novamente
-            </button>
-          </div>
-        )}
-        
-        {!loading && !error && accessories.length === 0 && (
-          <p>Nenhum acessório cadastrado ainda.</p>
-        )}
-        
-        {!loading && !error && (
-          <table className="accessories-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Unidade</th>
-                <th>Cores e Preços</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accessories.map((accessory) => (
-                <tr key={accessory.id}>
-                  <td>{accessory.name}</td>
-                  <td>{accessory.unit}</td>
-                  <td>
-                    <table className="nested-colors-table">
-                      <thead>
-                        <tr>
-                          <th>Cor</th>
-                          <th>Custo</th>
-                          <th>Margem</th>
-                          <th>Venda</th>
+        <table className="accessories-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Unidade</th>
+              <th>Cores e Preços</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAccessories.map(accessory => (
+              <tr key={accessory.id}>
+                <td>{accessory.name}</td>
+                <td>{accessory.unit}</td>
+                <td>
+                  <table className="nested-colors-table">
+                    <thead>
+                      <tr>
+                        <th>Cor</th>
+                        <th>Custo</th>
+                        <th>Margem</th>
+                        <th>Venda</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accessory.colors?.map((color, index) => (
+                        <tr key={index}>
+                          <td>{color.color}</td>
+                          <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(color.cost_price)}</td>
+                          <td>{color.profit_margin}%</td>
+                          <td>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(color.sale_price)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {accessory.colors?.map((color, index) => (
-                          <tr key={index}>
-                            <td>{color.color}</td>
-                            <td>R$ {parseFloat(color.cost_price).toFixed(2)}</td>
-                            <td>{parseFloat(color.profit_margin).toFixed(2)}%</td>
-                            <td>R$ {parseFloat(color.sale_price).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </td>
-                  <td>
-                    <button onClick={() => handleDeleteAccessory(accessory.id)}>
+                      ))}
+                    </tbody>
+                  </table>
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    <button 
+                      type="button"
+                      onClick={() => handleEditAccessory(accessory)} 
+                      className="edit-button"
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => handleDeleteAccessory(accessory.id)} 
+                      className="delete-button"
+                    >
                       Excluir
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>{editingAccessoryId ? 'Editar Acessório' : 'Novo Acessório'}</h3>
+              <button className="close-button" onClick={handleCloseModal}>&times;</button>
+            </div>
+            <form onSubmit={handleSubmit} className="accessories-form">
+              <div className="form-group">
+                <label htmlFor="accessoryName">Nome do Acessório:</label>
+                <input
+                  type="text"
+                  id="accessoryName"
+                  name="name"
+                  value={newAccessory.name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="unit">Unidade:</label>
+                <input
+                  type="text"
+                  id="unit"
+                  name="unit"
+                  value={newAccessory.unit}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="colors-section">
+                <h3>Cores e Preços</h3>
+                <div className="color-form">
+                  <div className="form-group">
+                    <label>Cor:</label>
+                    <input
+                      type="text"
+                      name="color"
+                      value={newColor.color}
+                      onChange={handleColorInputChange}
+                      placeholder="Nome da cor"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Preço de Custo:</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="cost_price"
+                      value={newColor.cost_price}
+                      onChange={handleColorInputChange}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Margem de Lucro (%):</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="profit_margin"
+                      value={newColor.profit_margin}
+                      onChange={handleColorInputChange}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Preço de Venda:</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="sale_price"
+                      value={newColor.sale_price}
+                      readOnly
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <button type="button" onClick={handleAddColor} className="add-color-button">
+                    Adicionar Cor
+                  </button>
+                </div>
+
+                <div className="added-colors">
+                  <h4>Cores Adicionadas:</h4>
+                  <table className="colors-table">
+                    <thead>
+                      <tr>
+                        <th>Cor</th>
+                        <th>Preço Custo</th>
+                        <th>Margem</th>
+                        <th>Preço Venda</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {newAccessory.colors.map((color, index) => (
+                        <tr key={index}>
+                          <td>{color.color}</td>
+                          <td>R$ {parseFloat(color.cost_price).toFixed(2)}</td>
+                          <td>{parseFloat(color.profit_margin).toFixed(2)}%</td>
+                          <td>R$ {parseFloat(color.sale_price).toFixed(2)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteColor(index)}
+                              className="delete-button"
+                            >
+                              Remover
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="submit-button">
+                  {editingAccessoryId ? 'Salvar Alterações' : 'Adicionar Acessório'}
+                </button>
+                <button type="button" onClick={handleCloseModal} className="cancel-button">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
