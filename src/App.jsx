@@ -18,6 +18,7 @@ import TestDB from './components/TestDB';
 import { authService } from './services/authService';
 import { syncService } from './services/syncService';
 import { localDB } from './services/localDatabase';
+import VisitScheduler from './components/VisitScheduler';
 
 function App() {
   const [companyLogo, setCompanyLogo] = useState(null);
@@ -37,6 +38,7 @@ function App() {
   useEffect(() => {
     loadFromCache();
     syncData();
+    fetchVisits();
     
     const syncInterval = setInterval(syncData, 30 * 60 * 1000);
     return () => clearInterval(syncInterval);
@@ -103,6 +105,24 @@ function App() {
     }
   };
 
+  const fetchVisits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('visits')
+        .select('*')
+        .order('date_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching visits:', error);
+        return;
+      }
+
+      setVisits(data || []);
+    } catch (error) {
+      console.error('Error in fetchVisits:', error);
+    }
+  };
+
   const handleLogin = (user) => {
     setLoggedInUser(user);
     navigate("/");
@@ -151,14 +171,16 @@ function App() {
           >
             {sidebarExpanded ? '✕' : '☰'}
           </button>
+          
+          {companyLogo && (
+            <img 
+              src={companyLogo} 
+              alt="Logo da Empresa" 
+              className="company-logo"
+            />
+          )}
+
           <div className={`sidebar ${sidebarExpanded ? 'expanded' : ''}`}>
-            {companyLogo && (
-              <img 
-                src={companyLogo} 
-                alt="Logo da Empresa" 
-                className="company-logo"
-              />
-            )}
             <nav>
               <ul className="nav-list">
                 <li className="nav-item">
@@ -195,6 +217,12 @@ function App() {
                   <NavLink to="/reports" className="nav-link">
                     <span className="icon">📊</span>
                     <span className="text">Relatórios</span>
+                  </NavLink>
+                </li>
+                <li className="nav-item">
+                  <NavLink to="/visits" className="nav-link">
+                    <span className="icon">📅</span>
+                    <span className="text">Visitas</span>
                   </NavLink>
                 </li>
                 <li className="nav-item">
@@ -374,6 +402,19 @@ function App() {
                       setCompanyLogo={setCompanyLogo} 
                       setValidadeOrcamento={setValidadeOrcamento} 
                       validadeOrcamento={validadeOrcamento} 
+                    />
+                  ) : (
+                    <div>Acesso negado.</div>
+                  )
+                } 
+              />
+              <Route 
+                path="/visits" 
+                element={
+                  authService.hasAccess('admin') ? (
+                    <VisitScheduler 
+                      visits={visits} 
+                      setVisits={setVisits}
                     />
                   ) : (
                     <div>Acesso negado.</div>

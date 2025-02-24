@@ -93,12 +93,11 @@ function BudgetDetailsPage({ companyLogo }) {
   };
 
   const formatProductDescription = (product, item) => {
-    const productDetails = getProductDetails(item.produto_id);
     let description = [
-      productDetails.nome || 'Produto',
-      productDetails.modelo || '',
-      productDetails.tecido || '',
-      productDetails.codigo || ''
+      product.nome || 'Produto',
+      product.modelo || '',
+      product.tecido || '',
+      product.codigo || ''
     ].filter(Boolean).join(' - ');
 
     if (item.bando) {
@@ -195,92 +194,67 @@ function BudgetDetailsPage({ companyLogo }) {
               className="budget-logo"
             />
           )}
-          <div className="company-info">
-            <h2>{companyData?.nome_fantasia || ''}</h2>
-            <p>CNPJ: {companyData?.cnpj || ''}</p>
-            <p>{companyData?.endereco || ''}</p>
-            <p>Tel.: {companyData?.telefone || ''}</p>
-          </div>
-        </div>
-
-        <div className="budget-header">
-          <h1>Orçamento #{budgetId}</h1>
-          <div className="budget-dates">
-            <p>Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}</p>
-            <p>Válido até: {calculateValidadeDate(budget.created_at, companyData?.validade_orcamento || 30)}</p>
-          </div>
-        </div>
-
-        <div className="client-info budget-section">
-          <h3>Cliente</h3>
-          <p>Nome: {budget.clientes?.name || 'Cliente não encontrado'}</p>
-          <p>Endereço: {budget.clientes?.address || ''}</p>
-          <p>Telefone: {budget.clientes?.phone || ''}</p>
-        </div>
-
-        <div className="items-section budget-section">
-          <h3>Itens do Orçamento</h3>
-          {budgetProducts.length > 0 ? (
-            <table className="budget-table">
-              <thead>
-                <tr>
-                  <th>Descrição</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgetProducts.map((item, index) => {
-                  const productDetails = getProductDetails(item.produto_id);
-                  return (
-                    <tr key={index}>
-                      <td>{formatProductDescription(productDetails, item)}</td>
-                      <td className="text-right">{formatCurrency(item.subtotal)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <p>Nenhum item neste orçamento.</p>
+          {companyData && (
+            <div className="company-info">
+              <p>{companyData.nome_fantasia}</p>
+              <p>{companyData.endereco}</p>
+              <p>contato@persiflexcortinas.com.br</p>
+              <p>Tel: (11) 99917-5419</p>
+            </div>
           )}
         </div>
 
-        {budgetAccessories && budgetAccessories.length > 0 && (
-          <div className="accessories-section budget-section">
-            <h3>Acessórios</h3>
-            <table className="budget-table">
-              <thead>
-                <tr>
-                  <th>Descrição</th>
-                  <th>Cor</th>
-                  <th>Quantidade</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgetAccessories.map((acc, index) => {
-                  const accessoryName = accessories.find(a => a.id === acc.accessory_id)?.name || 'Acessório não encontrado';
-                  return (
-                    <tr key={index}>
-                      <td>{accessoryName}</td>
-                      <td>{acc.color || 'N/A'}</td>
-                      <td className="text-center">{acc.quantity || 0}</td>
-                      <td className="text-right">{formatCurrency(acc.subtotal || 0)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="budget-header">
+          <h1 className="budget-number">Orçamento #{budget.id}</h1>
+          <div className="budget-date">
+            Data do Orçamento: {new Date(budget.created_at).toLocaleDateString()}
+            <br />
+            Válido até: {calculateValidadeDate(budget.created_at, budget.validade_dias)}
           </div>
-        )}
+        </div>
 
-        <div className="budget-total">
-          <h3>Total: {formatCurrency(budget.valor_total)}</h3>
+        <div className="client-section">
+          <h3>Cliente</h3>
+          <p>Nome: {budget.clientes.name}</p>
+          <p>Endereço: {budget.clientes.address}</p>
+          <p>Telefone: {budget.clientes.phone}</p>
+        </div>
+
+        <div className="budget-items">
+          <h3>Itens do Orçamento</h3>
+          <table className="budget-table">
+            <thead>
+              <tr>
+                <th className="description">Descrição</th>
+                <th className="total">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {budgetProducts.map((item, index) => {
+                const productDetails = getProductDetails(item.produto_id);
+                return (
+                  <tr key={index}>
+                    <td className="description">{formatProductDescription(productDetails, item)}</td>
+                    <td className="total">{formatCurrency(Number(item.valor_total || item.subtotal || 0))}</td>
+                  </tr>
+                );
+              })}
+              {budgetAccessories && budgetAccessories.length > 0 && budgetAccessories.map((item, index) => (
+                <tr key={`acc-${index}`}>
+                  <td className="description">{getAccessoryName(item.accessory_id)}</td>
+                  <td className="total">{formatCurrency(Number(item.valor_total || item.subtotal || 0))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="budget-total">
+            Total: {formatCurrency(Number(budget.valor_total || 0))}
+          </div>
         </div>
       </div>
 
       <div className="action-buttons">
-        <button onClick={generatePDF} className="print-button">
+        <button className="action-button print-button" onClick={generatePDF}>
           Gerar PDF
         </button>
       </div>
