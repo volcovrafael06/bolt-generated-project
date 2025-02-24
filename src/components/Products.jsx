@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { produtoService } from '../services/produtoService';
+import { supabase } from '../supabase/client';
 import './Products.css';
 
 function Products() {
@@ -9,20 +10,14 @@ function Products() {
     material: '',
     name: '',
     code: '',
-    cost_price: '0',
-    profit_margin: '0',
-    sale_price: '0',
-    calculation_method: '',
+    cost_price: '',
+    profit_margin: '',
+    sale_price: '',
+    calculation_method: 'manual',
     altura_minima: '',
     largura_minima: '',
     largura_maxima: '',
-    area_minima: '',
-    wave_pricing: [
-      { min_height: 0, max_height: 2.5, price: '', sale_price: '' },
-      { min_height: 2.501, max_height: 4, price: '', sale_price: '' },
-      { min_height: 4.001, max_height: 5, price: '', sale_price: '' },
-      { min_height: 5.001, max_height: 6, price: '', sale_price: '' }
-    ]
+    area_minima: ''
   };
 
   const [products, setProducts] = useState([]);
@@ -35,6 +30,15 @@ function Products() {
   const [newProduct, setNewProduct] = useState(initialProductState);
   const [editingProductId, setEditingProductId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [wavePricing, setWavePricing] = useState({
+    wave_pricing: [
+      { min_height: 0, max_height: 2.5, price: '', sale_price: '' },
+      { min_height: 2.501, max_height: 4, price: '', sale_price: '' },
+      { min_height: 4.001, max_height: 5, price: '', sale_price: '' },
+      { min_height: 5.001, max_height: 6, price: '', sale_price: '' }
+    ]
+  });
 
   // Filter products based on search term
   const filteredProducts = products.filter(product => {
@@ -116,7 +120,7 @@ function Products() {
   };
 
   const getWavePrice = (height) => {
-    const pricing = newProduct.wave_pricing;
+    const pricing = wavePricing.wave_pricing;
     for (const tier of pricing) {
       if (height >= tier.min_height && height <= tier.max_height) {
         return tier.price;
@@ -133,46 +137,14 @@ function Products() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    // Handle numeric fields
-    const numericFields = ['cost_price', 'profit_margin', 'altura_minima', 'largura_minima', 'largura_maxima', 'area_minima'];
-    
-    setNewProduct(prev => {
-      let newValue = value;
-      
-      // For numeric fields, allow empty string or valid numbers
-      if (numericFields.includes(name)) {
-        // Allow empty string or numbers only
-        if (value === '' || !isNaN(value)) {
-          newValue = value === '' ? '' : value;
-        } else {
-          return prev; // Invalid number, keep previous value
-        }
-      }
-
-      const updates = { ...prev, [name]: newValue };
-
-      // If model is changed to WAVE, set calculation method to altura
-      if (name === 'model' && value.toUpperCase() === 'WAVE') {
-        updates.calculation_method = 'altura';
-        updates.cost_price = '0';
-      }
-
-      // Update sale price when cost price, profit margin, or height (for Wave) changes
-      if (name === 'cost_price' || name === 'profit_margin' || 
-         (name === 'altura_minima' && updates.model.toUpperCase() === 'WAVE')) {
-        updates.sale_price = calculateSalePrice(
-          name === 'cost_price' ? value : prev.cost_price,
-          name === 'profit_margin' ? value : prev.profit_margin
-        );
-      }
-
-      return updates;
-    });
+    setNewProduct(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleWavePriceChange = (index, value) => {
-    setNewProduct(prev => {
+    setWavePricing(prev => {
       const updatedPricing = [...prev.wave_pricing];
       updatedPricing[index] = {
         ...updatedPricing[index],
@@ -198,7 +170,7 @@ function Products() {
       // Special handling for Wave model
       if (newProduct.model.toUpperCase() === 'WAVE') {
         // Validate Wave pricing
-        const isWavePricingValid = newProduct.wave_pricing.every(tier => 
+        const isWavePricingValid = wavePricing.wave_pricing.every(tier => 
           tier.price && !isNaN(parseFloat(tier.price)) && parseFloat(tier.price) > 0
         );
         
@@ -209,7 +181,7 @@ function Products() {
 
         newProduct.calculation_method = 'altura';
         // Update sale prices before saving
-        newProduct.wave_pricing = newProduct.wave_pricing.map(tier => ({
+        newProduct.wave_pricing = wavePricing.wave_pricing.map(tier => ({
           ...tier,
           sale_price: calculateWaveSalePrice(parseFloat(tier.price))
         }));
@@ -482,105 +454,107 @@ function Products() {
                       />
                     </div>
 
-                    <div className="wave-pricing-section">
-                      <h4>Preços por Altura</h4>
-                      <div className="wave-price-row">
-                        <div className="wave-price-group">
-                          <label>Preço até 2,5m:</label>
-                          <div className="price-inputs">
-                            <div className="input-group">
-                              <label>Custo:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[0].price}
-                                onChange={(e) => handleWavePriceChange(0, e.target.value)}
-                                step="0.01"
-                                min="0"
-                                required
-                              />
-                            </div>
-                            <div className="input-group">
-                              <label>Venda:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[0].sale_price}
-                                disabled
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="wave-price-group">
-                          <label>Preço de 2,501m a 4m:</label>
-                          <div className="price-inputs">
-                            <div className="input-group">
-                              <label>Custo:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[1].price}
-                                onChange={(e) => handleWavePriceChange(1, e.target.value)}
-                                step="0.01"
-                                min="0"
-                                required
-                              />
-                            </div>
-                            <div className="input-group">
-                              <label>Venda:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[1].sale_price}
-                                disabled
-                              />
+                    <div className="wave-options">
+                      <div className="form-group">
+                        <label htmlFor="wave_pricing">Configuração de Preços Wave</label>
+                        <div className="wave-price-row">
+                          <div className="wave-price-group">
+                            <label>Preço até 2,5m:</label>
+                            <div className="price-inputs">
+                              <div className="input-group">
+                                <label>Custo:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[0].price}
+                                  onChange={(e) => handleWavePriceChange(0, e.target.value)}
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Venda:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[0].sale_price}
+                                  disabled
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="wave-price-group">
-                          <label>Preço de 4,001m a 5m:</label>
-                          <div className="price-inputs">
-                            <div className="input-group">
-                              <label>Custo:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[2].price}
-                                onChange={(e) => handleWavePriceChange(2, e.target.value)}
-                                step="0.01"
-                                min="0"
-                                required
-                              />
-                            </div>
-                            <div className="input-group">
-                              <label>Venda:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[2].sale_price}
-                                disabled
-                              />
+                          <div className="wave-price-group">
+                            <label>Preço de 2,501m a 4m:</label>
+                            <div className="price-inputs">
+                              <div className="input-group">
+                                <label>Custo:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[1].price}
+                                  onChange={(e) => handleWavePriceChange(1, e.target.value)}
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Venda:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[1].sale_price}
+                                  disabled
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="wave-price-group">
-                          <label>Preço de 5,001m a 6m:</label>
-                          <div className="price-inputs">
-                            <div className="input-group">
-                              <label>Custo:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[3].price}
-                                onChange={(e) => handleWavePriceChange(3, e.target.value)}
-                                step="0.01"
-                                min="0"
-                                required
-                              />
+                          <div className="wave-price-group">
+                            <label>Preço de 4,001m a 5m:</label>
+                            <div className="price-inputs">
+                              <div className="input-group">
+                                <label>Custo:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[2].price}
+                                  onChange={(e) => handleWavePriceChange(2, e.target.value)}
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Venda:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[2].sale_price}
+                                  disabled
+                                />
+                              </div>
                             </div>
-                            <div className="input-group">
-                              <label>Venda:</label>
-                              <input
-                                type="number"
-                                value={newProduct.wave_pricing[3].sale_price}
-                                disabled
-                              />
+                          </div>
+
+                          <div className="wave-price-group">
+                            <label>Preço de 5,001m a 6m:</label>
+                            <div className="price-inputs">
+                              <div className="input-group">
+                                <label>Custo:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[3].price}
+                                  onChange={(e) => handleWavePriceChange(3, e.target.value)}
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Venda:</label>
+                                <input
+                                  type="number"
+                                  value={wavePricing.wave_pricing[3].sale_price}
+                                  disabled
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
