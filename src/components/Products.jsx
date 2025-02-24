@@ -6,12 +6,10 @@ function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Options for selectable fields
+  const [showModal, setShowModal] = useState(false);
   const [productOptions, setProductOptions] = useState([]);
   const [modelOptions, setModelOptions] = useState([]);
   const [materialOptions, setMaterialOptions] = useState([]);
-
   const [newProduct, setNewProduct] = useState({
     product: '',
     model: '',
@@ -26,22 +24,45 @@ function Products() {
     largura_minima: '',
     area_minima: ''
   });
-
   const [editingProductId, setEditingProductId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter products based on search term
+  const filteredProducts = products.filter(product => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      product.product?.toLowerCase().includes(searchLower) ||
+      product.model?.toLowerCase().includes(searchLower) ||
+      product.material?.toLowerCase().includes(searchLower) ||
+      product.name?.toLowerCase().includes(searchLower) ||
+      product.code?.toLowerCase().includes(searchLower) ||
+      product.calculation_method?.toLowerCase().includes(searchLower)
+    );
+  });
 
   useEffect(() => {
     loadProducts();
-    loadOptions();
   }, []);
 
-  const loadOptions = () => {
-    const loadedProductOptions = JSON.parse(localStorage.getItem('productOptions')) || [];
-    const loadedModelOptions = JSON.parse(localStorage.getItem('modelOptions')) || [];
-    const loadedMaterialOptions = JSON.parse(localStorage.getItem('materialOptions')) || [];
+  useEffect(() => {
+    loadOptions();
+  }, [products]);
 
-    setProductOptions(loadedProductOptions);
-    setModelOptions(loadedModelOptions);
-    setMaterialOptions(loadedMaterialOptions);
+  const loadOptions = () => {
+    const loadedProductOptions = new Set(JSON.parse(localStorage.getItem('productOptions')) || []);
+    const loadedModelOptions = new Set(JSON.parse(localStorage.getItem('modelOptions')) || []);
+    const loadedMaterialOptions = new Set(JSON.parse(localStorage.getItem('materialOptions')) || []);
+
+    // Add options from existing products
+    products.forEach(product => {
+      if (product.product) loadedProductOptions.add(product.product);
+      if (product.model) loadedModelOptions.add(product.model);
+      if (product.material) loadedMaterialOptions.add(product.material);
+    });
+
+    setProductOptions([...loadedProductOptions].sort());
+    setModelOptions([...loadedModelOptions].sort());
+    setMaterialOptions([...loadedMaterialOptions].sort());
   };
 
   const loadProducts = async () => {
@@ -158,6 +179,7 @@ function Products() {
         area_minima: ''
       });
       setEditingProductId(null);
+      setShowModal(false);
     } catch (err) {
       setError('Erro ao salvar produto: ' + err.message);
     }
@@ -166,6 +188,7 @@ function Products() {
   const handleEditProduct = (product) => {
     setNewProduct(product);
     setEditingProductId(product.id);
+    setShowModal(true);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -179,198 +202,49 @@ function Products() {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingProductId(null);
+    setNewProduct({
+      product: '',
+      model: '',
+      material: '',
+      name: '',
+      code: '',
+      cost_price: 0,
+      profit_margin: 0,
+      sale_price: 0,
+      calculation_method: 'm2',
+      altura_minima: '',
+      largura_minima: '',
+      area_minima: ''
+    });
+  };
+
   if (loading) return <div>Carregando...</div>;
   if (error) return <div>Erro: {error}</div>;
 
   return (
     <div className="products-container">
-      <h2>Cadastro de Produtos</h2>
-
-      <form onSubmit={handleSubmit} className="product-form">
-        <div className="form-group">
-          <label>Produto:</label>
-          <div className="input-with-button">
-            <select
-              name="product"
-              value={newProduct.product}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">Selecione um produto</option>
-              {productOptions.map((option, index) => (
-                <option key={index} value={option}>{option}</option>
-              ))}
-            </select>
-            <button type="button" onClick={() => handleAddOption('produto')}>
-              + Novo
-            </button>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label>Modelo:</label>
-          <div className="input-with-button">
-            <select
-              name="model"
-              value={newProduct.model}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">Selecione um modelo</option>
-              {modelOptions.map((option, index) => (
-                <option key={index} value={option}>{option}</option>
-              ))}
-            </select>
-            <button type="button" onClick={() => handleAddOption('modelo')}>
-              + Novo
-            </button>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label>Tecido:</label>
-          <div className="input-with-button">
-            <select
-              name="material"
-              value={newProduct.material}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">Selecione um tecido</option>
-              {materialOptions.map((option, index) => (
-                <option key={index} value={option}>{option}</option>
-              ))}
-            </select>
-            <button type="button" onClick={() => handleAddOption('tecido')}>
-              + Novo
-            </button>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label>Nome:</label>
-          <input
-            type="text"
-            name="name"
-            value={newProduct.name}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Código:</label>
-          <input
-            type="text"
-            name="code"
-            value={newProduct.code}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Preço de Custo:</label>
-          <input
-            type="number"
-            name="cost_price"
-            value={newProduct.cost_price}
-            onChange={handleInputChange}
-            step="0.01"
-            min="0"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Margem de Lucro (%):</label>
-          <input
-            type="number"
-            name="profit_margin"
-            value={newProduct.profit_margin}
-            onChange={handleInputChange}
-            step="0.1"
-            min="0"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Preço de Venda:</label>
-          <input
-            type="number"
-            value={newProduct.sale_price}
-            readOnly
-            disabled
-          />
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label>Método de Cálculo:</label>
-            <select
-              name="calculation_method"
-              value={newProduct.calculation_method}
-              onChange={handleInputChange}
-            >
-              <option value="m2">Metro Quadrado (m²)</option>
-              <option value="linear">Metro Linear</option>
-              <option value="unidade">Unidade</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Altura Mínima (m):</label>
+      <div className="products-header">
+        <h2>Produtos Cadastrados</h2>
+        <div className="header-actions">
+          <div className="search-container">
             <input
-              type="number"
-              step="0.01"
-              name="altura_minima"
-              value={newProduct.altura_minima}
-              onChange={handleInputChange}
-              placeholder="0.00"
+              type="text"
+              placeholder="Pesquisar produtos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
             />
           </div>
-
-          <div className="form-group">
-            <label>Largura Mínima (m):</label>
-            <input
-              type="number"
-              step="0.01"
-              name="largura_minima"
-              value={newProduct.largura_minima}
-              onChange={handleInputChange}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Área Mínima (m²):</label>
-            <input
-              type="number"
-              step="0.01"
-              name="area_minima"
-              value={newProduct.area_minima}
-              onChange={handleInputChange}
-              placeholder="0.00"
-            />
-          </div>
-        </div>
-
-        <div className="form-actions">
-          <button type="submit">
-            {editingProductId ? 'Atualizar Produto' : 'Cadastrar Produto'}
+          <button className="add-product-button" onClick={() => setShowModal(true)}>
+            + Novo Produto
           </button>
-          {editingProductId && (
-            <button type="button" onClick={() => setEditingProductId(null)}>
-              Cancelar
-            </button>
-          )}
         </div>
-      </form>
+      </div>
 
       <div className="products-list">
-        {/* Table to display products */}
-        <h3>Produtos Cadastrados</h3>
         <table>
           <thead>
             <tr>
@@ -383,32 +257,34 @@ function Products() {
               <th>Margem</th>
               <th>Preço Venda</th>
               <th>Cálculo</th>
-              <th>Altura Mínima</th>
-              <th>Largura Mínima</th>
-              <th>Área Mínima</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {products.map(product => (
+            {filteredProducts.map(product => (
               <tr key={product.id}>
                 <td>{product.product}</td>
                 <td>{product.model}</td>
                 <td>{product.material}</td>
                 <td>{product.name}</td>
                 <td>{product.code}</td>
-                <td>R$ {product.cost_price}</td>
+                <td>R$ {parseFloat(product.cost_price).toFixed(2)}</td>
                 <td>{product.profit_margin}%</td>
-                <td>R$ {product.sale_price}</td>
+                <td>R$ {parseFloat(product.sale_price).toFixed(2)}</td>
                 <td>{product.calculation_method}</td>
-                <td>{product.altura_minima}</td>
-                <td>{product.largura_minima}</td>
-                <td>{product.area_minima}</td>
                 <td>
-                  <button onClick={() => handleEditProduct(product)}>
+                  <button 
+                    type="button"
+                    onClick={() => handleEditProduct(product)} 
+                    className="edit-button"
+                  >
                     Editar
                   </button>
-                  <button onClick={() => handleDeleteProduct(product.id)}>
+                  <button 
+                    type="button"
+                    onClick={() => handleDeleteProduct(product.id)} 
+                    className="delete-button"
+                  >
                     Excluir
                   </button>
                 </td>
@@ -417,6 +293,196 @@ function Products() {
           </tbody>
         </table>
       </div>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>{editingProductId ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <button className="close-button" onClick={handleCloseModal}>&times;</button>
+            </div>
+            <form onSubmit={handleSubmit} className="product-form">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Produto:</label>
+                  <div className="input-with-button">
+                    <select
+                      name="product"
+                      value={newProduct.product}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Selecione um produto</option>
+                      {productOptions.map((option, index) => (
+                        <option key={index} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => handleAddOption('produto')}>
+                      + Novo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Modelo:</label>
+                  <div className="input-with-button">
+                    <select
+                      name="model"
+                      value={newProduct.model}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Selecione um modelo</option>
+                      {modelOptions.map((option, index) => (
+                        <option key={index} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => handleAddOption('modelo')}>
+                      + Novo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Tecido:</label>
+                  <div className="input-with-button">
+                    <select
+                      name="material"
+                      value={newProduct.material}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Selecione um tecido</option>
+                      {materialOptions.map((option, index) => (
+                        <option key={index} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => handleAddOption('tecido')}>
+                      + Novo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Nome:</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newProduct.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Código:</label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={newProduct.code}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Preço de Custo:</label>
+                  <input
+                    type="number"
+                    name="cost_price"
+                    value={newProduct.cost_price}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Margem de Lucro (%):</label>
+                  <input
+                    type="number"
+                    name="profit_margin"
+                    value={newProduct.profit_margin}
+                    onChange={handleInputChange}
+                    step="0.1"
+                    min="0"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Preço de Venda:</label>
+                  <input
+                    type="number"
+                    value={newProduct.sale_price}
+                    readOnly
+                    disabled
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Método de Cálculo:</label>
+                  <select
+                    name="calculation_method"
+                    value={newProduct.calculation_method}
+                    onChange={handleInputChange}
+                  >
+                    <option value="m2">Metro Quadrado (m²)</option>
+                    <option value="linear">Metro Linear</option>
+                    <option value="unidade">Unidade</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Altura Mínima (m):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="altura_minima"
+                    value={newProduct.altura_minima}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Largura Mínima (m):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="largura_minima"
+                    value={newProduct.largura_minima}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Área Mínima (m²):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="area_minima"
+                    value={newProduct.area_minima}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="submit-button">
+                  {editingProductId ? 'Atualizar Produto' : 'Cadastrar Produto'}
+                </button>
+                <button type="button" className="cancel-button" onClick={handleCloseModal}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

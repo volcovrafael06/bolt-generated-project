@@ -232,7 +232,6 @@ function Reports({ budgets }) {
 
     let filteredBudgets = [...budgets];
 
-    // Apply date filters if custom period is selected
     if (period === 'custom' && startDate && endDate) {
       filteredBudgets = filteredBudgets.filter(budget => {
         const budgetDate = new Date(budget.created_at);
@@ -240,12 +239,35 @@ function Reports({ budgets }) {
         const end = new Date(endDate);
         return budgetDate >= start && budgetDate <= end;
       });
-    } else if (period === 'monthly') {
+    } else {
       const today = new Date();
+      
       filteredBudgets = filteredBudgets.filter(budget => {
         const budgetDate = new Date(budget.created_at);
-        return budgetDate.getMonth() === today.getMonth() &&
-               budgetDate.getFullYear() === today.getFullYear();
+        
+        switch (period) {
+          case 'daily':
+            return budgetDate.getDate() === today.getDate() &&
+                   budgetDate.getMonth() === today.getMonth() &&
+                   budgetDate.getFullYear() === today.getFullYear();
+          
+          case 'weekly':
+            const budgetTime = budgetDate.getTime();
+            const todayTime = today.getTime();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+            const weekStart = todayTime - oneWeek;
+            return budgetTime >= weekStart && budgetTime <= todayTime;
+          
+          case 'monthly':
+            return budgetDate.getMonth() === today.getMonth() &&
+                   budgetDate.getFullYear() === today.getFullYear();
+          
+          case 'yearly':
+            return budgetDate.getFullYear() === today.getFullYear();
+            
+          default:
+            return true; // No filter if period is not recognized
+        }
       });
     }
 
