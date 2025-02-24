@@ -121,3 +121,16 @@
     white-space: nowrap;
   }
 }
+
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  width: 100%;
+}
+
+.loading-indicator p {
+  font-size: 1.2em;
+  color: #666;
+}

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './Reports.css';
 import { supabase } from '../supabase/client';
 
-function Reports({ budgets }) {
+function Reports({ budgets: initialBudgets }) {
   const [period, setPeriod] = useState('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reportData, setReportData] = useState([]);
+  const [budgets, setBudgets] = useState(initialBudgets || []);
   const [summary, setSummary] = useState({
     totalBudgets: 0,
     finalized: 0,
@@ -19,10 +20,39 @@ function Reports({ budgets }) {
     profitMargin: 0,
     totalInstallation: 0
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    processReportData();
-  }, [period, startDate, endDate, budgets]);
+    const fetchBudgets = async () => {
+      try {
+        setLoading(true);
+        const { data: budgetsData, error } = await supabase
+          .from('orcamentos')
+          .select(`
+            *,
+            clientes (
+              name
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setBudgets(budgetsData || []);
+      } catch (err) {
+        console.error('Error fetching budgets:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBudgets();
+  }, [period, startDate, endDate]);
+
+  useEffect(() => {
+    if (budgets.length > 0) {
+      processReportData();
+    }
+  }, [budgets, period, startDate, endDate]);
 
   const calculateDimensions = (product, width, height) => {
     // Converter strings para números
@@ -459,137 +489,165 @@ function Reports({ budgets }) {
     <div className="reports-container">
       <h2>Relatório Gerencial</h2>
 
-      <div className="filter-options">
-        <label htmlFor="period">Período:</label>
-        <select id="period" value={period} onChange={handlePeriodChange}>
-          <option value="daily">Diário</option>
-          <option value="weekly">Semanal</option>
-          <option value="monthly">Mensal</option>
-          <option value="yearly">Anual</option>
-          <option value="custom">Personalizado</option>
-        </select>
-
-        {period === 'custom' && (
-          <>
-            <label htmlFor="startDate">Data de Início:</label>
-            <input 
-              type="date" 
-              id="startDate" 
-              value={startDate} 
-              onChange={(e) => setStartDate(e.target.value)} 
-            />
-
-            <label htmlFor="endDate">Data de Término:</label>
-            <input 
-              type="date" 
-              id="endDate" 
-              value={endDate} 
-              onChange={(e) => setEndDate(e.target.value)} 
-            />
-          </>
-        )}
-      </div>
-
-      <div className="summary-cards">
-        <div className="summary-card">
-          <h3>Visão Geral</h3>
-          <p>Total de Orçamentos: {summary.total}</p>
-          <p>Finalizados: {summary.finalized}</p>
-          <p>Pendentes: {summary.pending}</p>
-          <p>Cancelados: {summary.canceled}</p>
+      {loading ? (
+        <div className="loading-indicator">
+          <p>Carregando relatórios...</p>
         </div>
-        
-        <div className="summary-card">
-          <h3>Desempenho Financeiro</h3>
-          <p>Receita Total (com instalação): {summary.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Receita Total (sem instalação): {(summary.totalRevenue - summary.totalInstallation).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Custos Totais: {summary.totalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Total Instalação (repasse): {summary.totalInstallation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Lucro Total: {summary.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-          <p>Margem de Lucro: {summary.profitMargin.toFixed(2)}%</p>
-          <p>Ticket Médio (sem instalação): {(summary.totalRevenue / summary.finalized - (summary.totalInstallation / summary.finalized)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="filter-options">
+            <label htmlFor="period">Período:</label>
+            <select id="period" value={period} onChange={handlePeriodChange}>
+              <option value="daily">Diário</option>
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensal</option>
+              <option value="yearly">Anual</option>
+              <option value="custom">Personalizado</option>
+            </select>
 
-      <h3>Detalhamento dos Orçamentos Finalizados</h3>
-      <table className="report-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Cliente</th>
-            <th>Valor Total</th>
-            <th>Valor sem Instalação</th>
-            <th>Taxa de Instalação</th>
-            <th>Custo Total</th>
-            <th>Lucro</th>
-            <th>Margem (%)</th>
-            <th>Produtos</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reportData.map(item => (
-            <React.Fragment key={item.id}>
+            {period === 'custom' && (
+              <>
+                <label htmlFor="startDate">Data de Início:</label>
+                <input 
+                  type="date" 
+                  id="startDate" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)} 
+                />
+
+                <label htmlFor="endDate">Data de Término:</label>
+                <input 
+                  type="date" 
+                  id="endDate" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)} 
+                />
+              </>
+            )}
+          </div>
+
+          <div className="summary-cards">
+            <div className="summary-card">
+              <h3>Visão Geral</h3>
+              <p>Total de Orçamentos: {summary.total}</p>
+              <p>Finalizados: {summary.finalized}</p>
+              <p>Pendentes: {summary.pending}</p>
+              <p>Cancelados: {summary.canceled}</p>
+            </div>
+            
+            <div className="summary-card">
+              <h3>Desempenho Financeiro</h3>
+              <p>Receita Total (com instalação): {summary.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <p>Receita Total (sem instalação): {(summary.totalRevenue - summary.totalInstallation).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <p>Custos Totais: {summary.totalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <p>Total Instalação (repasse): {summary.totalInstallation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <p>Lucro Total: {summary.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <p>Margem de Lucro: {summary.profitMargin.toFixed(2)}%</p>
+              <p>Ticket Médio (sem instalação): {(summary.totalRevenue / summary.finalized - (summary.totalInstallation / summary.finalized)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            </div>
+          </div>
+
+          <h3>Detalhamento dos Orçamentos Finalizados</h3>
+          <table className="report-table">
+            <thead>
               <tr>
-                <td>{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
-                <td>{item.clientes?.name || 'Cliente não encontrado'}</td>
-                <td>
-                  {item.valor_negociado ? (
-                    <span>
-                      {item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      <br/>
-                      <small className="text-gray-500">
-                        Original: {item.originalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </small>
-                    </span>
-                  ) : (
-                    item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                  )}
-                </td>
-                <td>{(item.totalValue - item.installationFee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{item.installationFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{item.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>{item.margin}%</td>
-                <td>{item.produtos.length}</td>
-                <td>
-                  <button onClick={() => toggleProductDetails(item.id)}>
-                    {item.showDetails ? 'Ocultar' : 'Detalhes'}
-                  </button>
-                </td>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Valor Total</th>
+                <th>Valor sem Instalação</th>
+                <th>Taxa de Instalação</th>
+                <th>Custo Total</th>
+                <th>Lucro</th>
+                <th>Margem (%)</th>
+                <th>Produtos</th>
+                <th>Ações</th>
               </tr>
-              {item.showDetails && (
-                <tr className="details-row">
-                  <td colSpan="9">
-                    <div className="product-details">
-                      <h4>Detalhes dos Produtos</h4>
-                      {item.produtos.map((prod, index) => (
-                        <div key={index} className="product-detail-item">
-                          <p>Produto {index + 1}:</p>
-                          <p>Dimensões: {prod.largura}m x {prod.altura}m</p>
-                          {prod.cost.dimensions.usedMinimum && (
-                            <p>Dimensões calculadas: {prod.cost.dimensions.width.toFixed(2)}m x {prod.cost.dimensions.height.toFixed(2)}m</p>
-                          )}
-                          <p>Custo do Produto: {prod.cost.productCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                          {prod.bando && (
-                            <>
-                              <p>Bandô:</p>
+            </thead>
+            <tbody>
+              {reportData.map(item => (
+                <React.Fragment key={item.id}>
+                  <tr>
+                    <td>{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td>{item.clientes?.name || 'Cliente não encontrado'}</td>
+                    <td>
+                      {item.valor_negociado ? (
+                        <span>
+                          {item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          <br/>
+                          <small className="text-gray-500">
+                            Original: {item.originalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </small>
+                        </span>
+                      ) : (
+                        item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      )}
+                    </td>
+                    <td>{(item.totalValue - item.installationFee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{item.installationFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{item.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{item.margin}%</td>
+                    <td>{item.produtos.length}</td>
+                    <td>
+                      <button onClick={() => toggleProductDetails(item.id)}>
+                        {item.showDetails ? 'Ocultar' : 'Detalhes'}
+                      </button>
+                    </td>
+                  </tr>
+                  {item.showDetails && (
+                    <tr className="details-row">
+                      <td colSpan="9">
+                        <div className="product-details">
+                          <h4>Detalhes dos Produtos</h4>
+                          {item.produtos.map((prod, index) => (
+                            <div key={index} className="product-detail-item">
+                              <p>Produto {index + 1}:</p>
+                              <p>Dimensões: {prod.largura}m x {prod.altura}m</p>
+                              {prod.cost.dimensions.usedMinimum && (
+                                <p>Dimensões calculadas: {prod.cost.dimensions.width.toFixed(2)}m x {prod.cost.dimensions.height.toFixed(2)}m</p>
+                              )}
+                              <p>Custo do Produto: {prod.cost.productCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                              {prod.bando && (
+                                <>
+                                  <p>Bandô:</p>
+                                  <ul>
+                                    <li>Custo: {prod.cost.bandoCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                    <li>Venda: {prod.cost.bandoValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                    <li>Lucro: {(prod.cost.bandoValue - prod.cost.bandoCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                  </ul>
+                                </>
+                              )}
+                              {prod.cost.acessorios && prod.cost.acessorios.length > 0 && (
+                                <>
+                                  <p>Acessórios:</p>
+                                  <ul>
+                                    <li>Custo Total: {prod.cost.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                    <li>Venda Total: {prod.cost.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                    <li>Lucro: {(prod.cost.accessoriesValue - prod.cost.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                    <li>Detalhes:</li>
+                                    {prod.cost.acessorios.map((acessorio, idx) => (
+                                      <li key={idx} style={{marginLeft: '20px'}}>
+                                        {acessorio.nome} - {acessorio.quantity}x 
+                                        - Custo un.: {parseFloat(acessorio.preco_custo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        - Venda un.: {parseFloat(acessorio.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+                              <p>Instalação: {prod.instalacao ? parseFloat(prod.valor_instalacao).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não'}</p>
+                              <p>Subtotal: {parseFloat(prod.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            </div>
+                          ))}
+                          {item.acessorios && item.acessorios.length > 0 && (
+                            <div className="report-section">
+                              <h4>Acessórios</h4>
                               <ul>
-                                <li>Custo: {prod.cost.bandoCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Venda: {prod.cost.bandoValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Lucro: {(prod.cost.bandoValue - prod.cost.bandoCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                              </ul>
-                            </>
-                          )}
-                          {prod.cost.acessorios && prod.cost.acessorios.length > 0 && (
-                            <>
-                              <p>Acessórios:</p>
-                              <ul>
-                                <li>Custo Total: {prod.cost.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Venda Total: {prod.cost.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Lucro: {(prod.cost.accessoriesValue - prod.cost.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Custo Total: {item.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Venda Total: {item.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
+                                <li>Lucro: {(item.accessoriesValue - item.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
                                 <li>Detalhes:</li>
-                                {prod.cost.acessorios.map((acessorio, idx) => (
+                                {item.acessorios.map((acessorio, idx) => (
                                   <li key={idx} style={{marginLeft: '20px'}}>
                                     {acessorio.nome} - {acessorio.quantity}x 
                                     - Custo un.: {parseFloat(acessorio.preco_custo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -597,38 +655,18 @@ function Reports({ budgets }) {
                                   </li>
                                 ))}
                               </ul>
-                            </>
+                            </div>
                           )}
-                          <p>Instalação: {prod.instalacao ? parseFloat(prod.valor_instalacao).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não'}</p>
-                          <p>Subtotal: {parseFloat(prod.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
-                      ))}
-                      {item.acessorios && item.acessorios.length > 0 && (
-                        <div className="report-section">
-                          <h4>Acessórios</h4>
-                          <ul>
-                            <li>Custo Total: {item.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                            <li>Venda Total: {item.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                            <li>Lucro: {(item.accessoriesValue - item.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                            <li>Detalhes:</li>
-                            {item.acessorios.map((acessorio, idx) => (
-                              <li key={idx} style={{marginLeft: '20px'}}>
-                                {acessorio.nome} - {acessorio.quantity}x 
-                                - Custo un.: {parseFloat(acessorio.preco_custo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                - Venda un.: {parseFloat(acessorio.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }

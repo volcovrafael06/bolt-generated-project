@@ -3,6 +3,22 @@ import { produtoService } from '../services/produtoService';
 import './Products.css';
 
 function Products() {
+  const initialProductState = {
+    product: '',
+    model: '',
+    material: '',
+    name: '',
+    code: '',
+    cost_price: '0',
+    profit_margin: '0',
+    sale_price: '0',
+    calculation_method: 'm2',
+    altura_minima: '',
+    largura_minima: '',
+    largura_maxima: '',
+    area_minima: ''
+  };
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,20 +26,7 @@ function Products() {
   const [productOptions, setProductOptions] = useState([]);
   const [modelOptions, setModelOptions] = useState([]);
   const [materialOptions, setMaterialOptions] = useState([]);
-  const [newProduct, setNewProduct] = useState({
-    product: '',
-    model: '',
-    material: '',
-    name: '',
-    code: '',
-    cost_price: 0,
-    profit_margin: 0,
-    sale_price: 0,
-    calculation_method: 'm2',
-    altura_minima: '',
-    largura_minima: '',
-    area_minima: ''
-  });
+  const [newProduct, setNewProduct] = useState(initialProductState);
   const [editingProductId, setEditingProductId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -82,6 +85,7 @@ function Products() {
         calculation_method: item.metodo_calculo,
         altura_minima: item.altura_minima || '',
         largura_minima: item.largura_minima || '',
+        largura_maxima: item.largura_maxima || '',
         area_minima: item.area_minima || ''
       }));
       setProducts(formattedData);
@@ -100,19 +104,77 @@ function Products() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
+    
+    // Handle numeric fields
+    const numericFields = ['cost_price', 'profit_margin', 'altura_minima', 'largura_minima', 'largura_maxima', 'area_minima'];
+    
     setNewProduct(prev => {
-      const updates = { ...prev, [name]: value };
+      let newValue = value;
+      
+      // For numeric fields, allow empty string or valid numbers
+      if (numericFields.includes(name)) {
+        // Allow empty string or numbers only
+        if (value === '' || !isNaN(value)) {
+          newValue = value === '' ? '' : value;
+        } else {
+          return prev; // Invalid number, keep previous value
+        }
+      }
 
+      const updates = { ...prev, [name]: newValue };
+
+      // Update sale price when cost price or profit margin changes
       if (name === 'cost_price' || name === 'profit_margin') {
-        updates.sale_price = calculateSalePrice(
-          name === 'cost_price' ? value : prev.cost_price,
-          name === 'profit_margin' ? value : prev.profit_margin
-        );
+        const costPrice = name === 'cost_price' ? value : prev.cost_price;
+        const profitMargin = name === 'profit_margin' ? value : prev.profit_margin;
+        updates.sale_price = calculateSalePrice(costPrice, profitMargin);
       }
 
       return updates;
     });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Validate required fields
+      if (!newProduct.product || !newProduct.model || !newProduct.material) {
+        setError('Produto, Modelo e Tecido são campos obrigatórios');
+        return;
+      }
+
+      // Validate numeric fields
+      const numericFields = {
+        'Preço de Custo': newProduct.cost_price,
+        'Margem de Lucro': newProduct.profit_margin
+      };
+
+      for (const [fieldName, value] of Object.entries(numericFields)) {
+        if (value === '' || isNaN(value)) {
+          setError(`${fieldName} deve ser um número válido`);
+          return;
+        }
+      }
+
+      const productData = {
+        ...newProduct,
+        sale_price: calculateSalePrice(newProduct.cost_price, newProduct.profit_margin)
+      };
+
+      if (editingProductId) {
+        await produtoService.update(editingProductId, productData);
+      } else {
+        await produtoService.create(productData);
+      }
+
+      loadProducts();
+      setNewProduct(initialProductState);
+      setEditingProductId(null);
+      setShowModal(false);
+      setError(null);
+    } catch (err) {
+      setError('Erro ao salvar produto: ' + err.message);
+    }
   };
 
   const handleAddOption = (optionType) => {
@@ -149,42 +211,6 @@ function Products() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const productData = {
-        ...newProduct,
-        sale_price: calculateSalePrice(newProduct.cost_price, newProduct.profit_margin)
-      };
-
-      if (editingProductId) {
-        await produtoService.update(editingProductId, productData);
-      } else {
-        await produtoService.create(productData);
-      }
-
-      loadProducts();
-      setNewProduct({
-        product: '',
-        model: '',
-        material: '',
-        name: '',
-        code: '',
-        cost_price: 0,
-        profit_margin: 0,
-        sale_price: 0,
-        calculation_method: 'm2',
-        altura_minima: '',
-        largura_minima: '',
-        area_minima: ''
-      });
-      setEditingProductId(null);
-      setShowModal(false);
-    } catch (err) {
-      setError('Erro ao salvar produto: ' + err.message);
-    }
-  };
-
   const handleEditProduct = (product) => {
     setNewProduct(product);
     setEditingProductId(product.id);
@@ -205,20 +231,7 @@ function Products() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProductId(null);
-    setNewProduct({
-      product: '',
-      model: '',
-      material: '',
-      name: '',
-      code: '',
-      cost_price: 0,
-      profit_margin: 0,
-      sale_price: 0,
-      calculation_method: 'm2',
-      altura_minima: '',
-      largura_minima: '',
-      area_minima: ''
-    });
+    setNewProduct(initialProductState);
   };
 
   if (loading) return <div>Carregando...</div>;
@@ -453,6 +466,18 @@ function Products() {
                     step="0.01"
                     name="largura_minima"
                     value={newProduct.largura_minima}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Largura Máxima (m):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="largura_maxima"
+                    value={newProduct.largura_maxima}
                     onChange={handleInputChange}
                     placeholder="0.00"
                   />

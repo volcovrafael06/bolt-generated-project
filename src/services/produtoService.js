@@ -17,13 +17,14 @@ export const produtoService = {
       tecido: produto.material,
       nome: produto.name,
       codigo: produto.code,
-      preco_custo: produto.cost_price,
-      margem_lucro: produto.profit_margin,
-      preco_venda: produto.sale_price,
+      preco_custo: parseFloat(produto.cost_price) || 0,
+      margem_lucro: parseFloat(produto.profit_margin) || 0,
+      preco_venda: parseFloat(produto.sale_price) || 0,
       metodo_calculo: produto.calculation_method,
-      altura_minima: produto.altura_minima,
-      largura_minima: produto.largura_minima,
-      area_minima: produto.area_minima
+      altura_minima: produto.altura_minima ? parseFloat(produto.altura_minima) : null,
+      largura_minima: produto.largura_minima ? parseFloat(produto.largura_minima) : null,
+      largura_maxima: produto.largura_maxima ? parseFloat(produto.largura_maxima) : null,
+      area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null
     }
 
     const { data, error } = await supabase
@@ -42,13 +43,14 @@ export const produtoService = {
       tecido: produto.material,
       nome: produto.name,
       codigo: produto.code,
-      preco_custo: produto.cost_price,
-      margem_lucro: produto.profit_margin,
-      preco_venda: produto.sale_price,
+      preco_custo: parseFloat(produto.cost_price) || 0,
+      margem_lucro: parseFloat(produto.profit_margin) || 0,
+      preco_venda: parseFloat(produto.sale_price) || 0,
       metodo_calculo: produto.calculation_method,
-      altura_minima: produto.altura_minima,
-      largura_minima: produto.largura_minima,
-      area_minima: produto.area_minima
+      altura_minima: produto.altura_minima ? parseFloat(produto.altura_minima) : null,
+      largura_minima: produto.largura_minima ? parseFloat(produto.largura_minima) : null,
+      largura_maxima: produto.largura_maxima ? parseFloat(produto.largura_maxima) : null,
+      area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null
     }
 
     const { data, error } = await supabase

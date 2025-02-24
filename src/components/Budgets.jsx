@@ -465,9 +465,16 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   };
 
   const handleAddProduct = () => {
-    if (!currentProduct.product || !currentProduct.width) {
-      setError("Por favor, preencha todos os campos do produto.");
+    if (!currentProduct.product) {
+      setError('Por favor, selecione um produto');
       return;
+    }
+
+    // Check if width exceeds maximum width
+    if (currentProduct.product.largura_maxima && parseFloat(currentProduct.width) > parseFloat(currentProduct.product.largura_maxima)) {
+      if (!window.confirm(`Atenção: A largura inserida (${currentProduct.width}m) excede a largura máxima do produto (${currentProduct.product.largura_maxima}m). Deseja continuar mesmo assim?`)) {
+        return;
+      }
     }
 
     const updatedProducts = [...newBudget.products, { ...currentProduct }];
