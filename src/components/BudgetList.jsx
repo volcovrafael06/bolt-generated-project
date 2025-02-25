@@ -86,29 +86,17 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                 <td>{new Date(budget.created_at).toLocaleDateString()}</td>
                 <td>{calculateExpirationDate(budget.created_at, validadeOrcamento)}</td>
                 <td>{budget.status || 'pendente'}</td>
-                <td className="actions-cell">
-                  <div className="action-buttons">
-                    <Link to={`/budgets/${budget.id}/view`} className="view-button" title="Visualizar">Ver</Link>
-                    <Link to={`/budgets/${budget.id}/edit`} className="edit-button" title="Editar">Edit</Link>
-                    {(!budget.status || budget.status === 'pending' || budget.status === 'pendente') && (
-                      <>
-                        <button 
-                          className="finalize-button"
-                          onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}
-                          title="Finalizar"
-                        >
-                          OK
-                        </button>
-                        <button 
-                          className="cancel-button"
-                          onClick={() => onCancelBudget && onCancelBudget(budget.id)}
-                          title="Cancelar"
-                        >
-                          X
-                        </button>
-                      </>
-                    )}
-                  </div>
+                <td>
+                  <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
+                  <Link to={`/budgets/${budget.id}/edit`}>Editar</Link>
+                  {(budget.status === 'pendente' || !budget.status) && (
+                    <>
+                      {' | '}
+                      <button onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}>Finalizar</button>
+                      {' | '}
+                      <button onClick={() => onCancelBudget && onCancelBudget(budget.id)}>Cancelar</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

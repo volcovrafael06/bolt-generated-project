@@ -238,6 +238,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                 product: fullProduct,
                 width: p.largura || '',
                 height: p.altura || '',
+                inputWidth: p.largura || '',
+                inputHeight: p.altura || '',
                 bando: p.bando || false,
                 bandoValue: p.valor_bando || 0,
                 bandoCusto: p.valor_bando_custo || 0,
@@ -245,7 +247,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                 installationValue: p.valor_instalacao || 0,
                 trilho_tipo: p.trilho_tipo || '',
                 valor_trilho: p.valor_trilho || 0,
-                subtotal: p.subtotal || 0
+                subtotal: p.subtotal || 0,
+                usedMinimum: false // Add this since we're using existing values
               };
             });
 
@@ -283,69 +286,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       loadBudgetData();
     }
   }, [isEditing, budgetId, initialProducts, initialAccessories]);
-
-  useEffect(() => {
-    const fetchBudgets = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('orcamentos')
-          .select(`
-            *,
-            clientes (
-              name
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setBudgets(data || []);
-      } catch (err) {
-        console.error('Erro ao carregar orçamentos:', err);
-        setError('Erro ao carregar orçamentos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBudgets();
-  }, []);
-
-  useEffect(() => {
-    const budgetsSubscription = supabase
-      .channel('orcamentos_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'orcamentos' 
-        }, 
-        async () => {
-          // Recarregar orçamentos quando houver mudanças
-          const { data, error } = await supabase
-            .from('orcamentos')
-            .select(`
-              *,
-              clientes (
-                name
-              )
-            `)
-            .order('created_at', { ascending: false });
-
-          if (error) {
-            console.error('Erro ao recarregar orçamentos:', error);
-            return;
-          }
-
-          setBudgets(data || []);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      budgetsSubscription.unsubscribe();
-    };
-  }, []);
 
   const calculateDimensions = (product, width, height) => {
     const inputWidth = parseFloat(width) || 0;
@@ -799,7 +739,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
   const handleAddProduct = () => {
     if (!currentProduct.product) {
-      setError("Por favor, selecione um produto.");
+      setError('Por favor, selecione um produto');
       return;
     }
 
@@ -935,39 +875,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     }));
   };
 
-  const updateBudgetStatus = async (budgetId, status) => {
-    try {
-      const { error } = await supabase
-        .from('orcamentos')
-        .update({ status })
-        .eq('id', budgetId);
-
-      if (error) throw error;
-
-      // Atualizar a lista de orçamentos
-      setBudgets(prev => prev.map(budget => 
-        budget.id === budgetId ? { ...budget, status } : budget
-      ));
-
-      // Recarregar os orçamentos
-      const { data: budgetsData, error: fetchError } = await supabase
-        .from('orcamentos')
-        .select(`
-          *,
-          clientes (
-            name
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-      setBudgets(budgetsData || []);
-    } catch (err) {
-      console.error(`Erro ao ${status === 'finalizado' ? 'finalizar' : 'cancelar'} orçamento:`, err);
-      setError(`Erro ao ${status === 'finalizado' ? 'finalizar' : 'cancelar'} orçamento`);
-    }
-  };
-
   const handleFinalizeBudget = async (e) => {
     e.preventDefault();
 
@@ -998,7 +905,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       }
 
       const cleanProducts = newBudget.products.map(product => ({
-        produto_id: product.produto.id,
+        produto_id: product.product.id,
         largura: parseFloat(product.width),
         altura: product.height ? parseFloat(product.height) : null,
         bando: product.bando,
@@ -1026,7 +933,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         acessorios_json: JSON.stringify(cleanAccessories),
         valor_negociado: newBudget.negotiatedValue,
         status: isEditing ? undefined : 'pending',
-        numero_orcamento: isEditing ? undefined : nextBudgetNumber
+        numero_orcamento: isEditing ? undefined : nextBudgetNumber // Adiciona o número do orçamento apenas para novos orçamentos
       };
 
       console.log('Saving budget with data:', budgetData);
@@ -1055,8 +962,8 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
         }
         result = data;
 
-        setBudgets(prev => prev.map(budget => 
-          budget.id === parseInt(budgetId) ? { ...budget, ...result } : budget
+        setBudgets(prev => prev.map(b =>
+          b.id === parseInt(budgetId) ? { ...b, ...result } : b
         ));
       } else {
         const { data, error } = await supabase
@@ -1223,67 +1130,6 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
   if (loading) return <p>Carregando...</p>;
   if (error) return <p>Erro: {error}</p>;
 
-  // Se não estiver editando, mostrar a lista de orçamentos
-  if (!isEditing) {
-    return (
-      <div className="budgets-container">
-        <div className="budgets-header">
-          <h2>Orçamentos</h2>
-          <button
-            className="new-budget-button"
-            onClick={() => navigate('/budgets/new')}
-          >
-            Novo Orçamento
-          </button>
-        </div>
-
-        <div className="budgets-list">
-          {budgets.map((budget) => (
-            <div key={budget.id} className="budget-item">
-              <div className="budget-info">
-                <h3>Orçamento #{budget.numero_orcamento}</h3>
-                <p>Cliente: {budget.clientes?.name}</p>
-                <p>Valor Total: R$ {budget.valor_total?.toFixed(2)}</p>
-                <p>Status: {budget.status || 'pendente'}</p>
-                {budget.valor_negociado && (
-                  <p>Valor Negociado: R$ {budget.valor_negociado?.toFixed(2)}</p>
-                )}
-              </div>
-              <div className="budget-actions">
-                <button
-                  type="button"
-                  className="edit-button"
-                  onClick={() => navigate(`/budgets/${budget.id}/edit`)}
-                >
-                  Editar
-                </button>
-                {(!budget.status || budget.status === 'pendente') && (
-                  <>
-                    <button
-                      type="button"
-                      className="finalize-button"
-                      onClick={() => updateBudgetStatus(budget.id, 'finalizado')}
-                    >
-                      Finalizar
-                    </button>
-                    <button
-                      type="button"
-                      className="cancel-button"
-                      onClick={() => updateBudgetStatus(budget.id, 'cancelado')}
-                    >
-                      Cancelar
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Formulário de criação/edição de orçamento
   return (
     <div className="budgets-container">
       <h2>{isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}</h2>
@@ -1339,29 +1185,11 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     <div className="actions">
                       <button
                         type="button"
-                        className="edit-button"
-                        onClick={() => navigate(`/budgets/${budget.id}/edit`)}
+                        className="remove-button"
+                        onClick={() => handleRemoveProduct(index)}
                       >
-                        Editar
+                        Remover
                       </button>
-                      {(!budget.status || budget.status === 'pendente') && (
-                        <>
-                          <button
-                            type="button"
-                            className="finalize-button"
-                            onClick={() => updateBudgetStatus(budget.id, 'finalizado')}
-                          >
-                            Finalizar
-                          </button>
-                          <button
-                            type="button"
-                            className="cancel-button"
-                            onClick={() => updateBudgetStatus(budget.id, 'cancelado')}
-                          >
-                            Cancelar
-                          </button>
-                        </>
-                      )}
                     </div>
                   </div>
                 ))}
