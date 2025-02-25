@@ -34,12 +34,17 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  table-layout: fixed;
 }
 
 th, td {
-  padding: 12px;
+  padding: 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th {
@@ -51,7 +56,107 @@ tr:hover {
   background-color: #f9f9f9;
 }
 
+/* Set specific widths for columns */
+th:nth-child(1), td:nth-child(1) { width: 18%; } /* Cliente */
+th:nth-child(2), td:nth-child(2) { width: 12%; } /* Valor */
+th:nth-child(3), td:nth-child(3) { width: 10%; } /* Data Criação */
+th:nth-child(4), td:nth-child(4) { width: 10%; } /* Válido até */
+th:nth-child(5), td:nth-child(5) { width: 10%; } /* Status */
+th:nth-child(6), td:nth-child(6) { 
+  width: 150px; 
+  text-align: right;
+  padding-right: 16px;
+} /* Ações */
+
 /* Action buttons */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 140px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #666;
+}
+
+.action-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.action-button i {
+  font-size: 14px;
+}
+
+.view-button {
+  color: #2196F3;
+}
+
+.edit-button {
+  color: #4CAF50;
+}
+
+.approve-button {
+  color: #4CAF50;
+}
+
+.cancel-button {
+  color: #F44336;
+}
+
+/* Status styling */
+.status-pending {
+  color: #FF9800;
+  font-weight: 500;
+}
+
+.status-finalized {
+  color: #4CAF50;
+  font-weight: 500;
+}
+
+.status-canceled {
+  color: #F44336;
+  font-weight: 500;
+}
+
+.status-expired {
+  color: #F44336;
+  font-weight: 500;
+}
+
+.expired-tag {
+  background-color: #F44336;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+/* Links in table */
+td a {
+  margin: 0 5px;
+  color: #2196F3;
+  text-decoration: none;
+}
+
+td a:hover {
+  text-decoration: underline;
+}
+
 td button {
   margin: 0 5px;
   padding: 5px 10px;
@@ -78,15 +183,4 @@ td button:last-of-type {
 
 td button:last-of-type:hover {
   background-color: #da190b;
-}
-
-/* Links in table */
-td a {
-  margin: 0 5px;
-  color: #2196F3;
-  text-decoration: none;
-}
-
-td a:hover {
-  text-decoration: underline;
 }

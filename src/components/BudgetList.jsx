@@ -33,7 +33,16 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
     const creation = new Date(creationDate);
     const validityDays = parseInt(validadeOrcamento, 10);
     const expirationDate = new Date(creation.setDate(creation.getDate() + validityDays));
-    return expirationDate.toLocaleDateString();
+    return expirationDate;
+  };
+
+  const isExpired = (creationDate, validadeOrcamento) => {
+    const expirationDate = calculateExpirationDate(creationDate, validadeOrcamento);
+    return new Date() > expirationDate;
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString();
   };
 
   return (
@@ -83,20 +92,50 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                     parseFloat(budget.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                   )}
                 </td>
-                <td>{new Date(budget.created_at).toLocaleDateString()}</td>
-                <td>{calculateExpirationDate(budget.created_at, validadeOrcamento)}</td>
-                <td>{budget.status || 'pendente'}</td>
+                <td>{formatDate(budget.created_at)}</td>
                 <td>
-                  <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
-                  <Link to={`/budgets/${budget.id}/edit`}>Editar</Link>
-                  {(budget.status === 'pendente' || !budget.status) && (
-                    <>
-                      {' | '}
-                      <button onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}>Finalizar</button>
-                      {' | '}
-                      <button onClick={() => onCancelBudget && onCancelBudget(budget.id)}>Cancelar</button>
-                    </>
+                  {formatDate(calculateExpirationDate(budget.created_at, validadeOrcamento))}
+                  {isExpired(budget.created_at, validadeOrcamento) && budget.status === 'pending' && (
+                    <span className="expired-tag">EXPIRADO</span>
                   )}
+                </td>
+                <td>
+                  <span className={`status-${budget.status === 'pending' && isExpired(budget.created_at, validadeOrcamento) ? 'expired' : budget.status || 'pending'}`}>
+                    {budget.status === 'pending' && isExpired(budget.created_at, validadeOrcamento) ? 'expirado' : budget.status || 'pendente'}
+                  </span>
+                </td>
+                <td className="action-buttons">
+                  <button 
+                    onClick={() => window.location.href = `/budgets/${budget.id}/view`}
+                    className="action-button view-button"
+                    title="Visualizar"
+                  >
+                    <i className="fas fa-search"></i>
+                  </button>
+
+                  <button 
+                    onClick={() => window.location.href = `/budgets/${budget.id}/edit`}
+                    className="action-button edit-button"
+                    title="Editar"
+                  >
+                    <i className="fas fa-pencil"></i>
+                  </button>
+
+                  <button 
+                    onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}
+                    className="action-button approve-button"
+                    title="Aprovar"
+                  >
+                    <i className="fas fa-check"></i>
+                  </button>
+
+                  <button 
+                    onClick={() => onCancelBudget && onCancelBudget(budget.id)}
+                    className="action-button cancel-button"
+                    title="Cancelar"
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
                 </td>
               </tr>
             ))}
