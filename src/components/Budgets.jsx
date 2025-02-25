@@ -295,19 +295,22 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
     let finalWidth = Math.max(inputWidth, minWidth);
     let finalHeight = Math.max(inputHeight, minHeight);
     
-    const area = finalWidth * finalHeight;
+    const area = inputWidth * inputHeight;
+    const isUsingMinimum = finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea);
     
     if (minArea > 0 && area < minArea) {
       const ratio = Math.sqrt(minArea / area);
-      finalWidth *= ratio;
-      finalHeight *= ratio;
+      finalWidth = Math.max(inputWidth * ratio, minWidth);
+      finalHeight = Math.max(inputHeight * ratio, minHeight);
     }
     
     return {
       width: finalWidth,
       height: finalHeight,
       area: finalWidth * finalHeight,
-      usedMinimum: finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea)
+      usedMinimum: isUsingMinimum,
+      inputWidth,
+      inputHeight
     };
   };
 
@@ -737,14 +740,22 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       return;
     }
 
-    // Check if width exceeds maximum width
-    if (currentProduct.product.largura_maxima && parseFloat(currentProduct.width) > parseFloat(currentProduct.product.largura_maxima)) {
-      if (!window.confirm(`Atenção: A largura inserida (${currentProduct.width}m) excede a largura máxima do produto (${currentProduct.product.largura_maxima}m). Deseja continuar mesmo assim?`)) {
-        return;
-      }
-    }
+    const dimensions = calculateDimensions(
+      currentProduct.product,
+      currentProduct.width,
+      currentProduct.height
+    );
 
-    const updatedProducts = [...newBudget.products, { ...currentProduct }];
+    const productToAdd = {
+      ...currentProduct,
+      inputWidth: parseFloat(currentProduct.width) || 0,
+      inputHeight: parseFloat(currentProduct.height) || 0,
+      width: dimensions.width,
+      height: dimensions.height,
+      usedMinimum: dimensions.usedMinimum
+    };
+
+    const updatedProducts = [...newBudget.products, productToAdd];
 
     const productsTotal = updatedProducts.reduce((sum, prod) => sum + (prod.subtotal || 0), 0);
     const accessoriesTotal = newBudget.accessories.reduce((sum, acc) => sum + (acc.subtotal || 0), 0);
@@ -1147,13 +1158,12 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
                     <div className="product-info">
                       <p><strong>{prod.product.nome}</strong></p>
                       <p>
-                        Dimensões digitadas: {prod.width}m x {prod.height}m
+                        Dimensões digitadas: {prod.inputWidth.toFixed(2)}m x {prod.inputHeight.toFixed(2)}m
                       </p>
                       {prod.usedMinimum && (
                         <>
-                          <p className="minimum-warning">(usando dimensões mínimas)</p>
-                          <p>
-                            Dimensões calculadas: {prod.calculatedWidth?.toFixed(2)}m x {prod.calculatedHeight?.toFixed(2)}m
+                          <p className="minimum-warning">
+                            USANDO VALORES MINIMOS {prod.width.toFixed(2)}m x {prod.height.toFixed(2)}m
                           </p>
                         </>
                       )}

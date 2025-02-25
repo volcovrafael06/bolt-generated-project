@@ -17,7 +17,7 @@ function Products() {
     altura_minima: '',
     largura_minima: '',
     largura_maxima: '',
-    area_minima: ''
+    area_minima: '',
   };
 
   const [products, setProducts] = useState([]);
@@ -260,6 +260,20 @@ function Products() {
     }
   };
 
+  const handleAddFabric = () => {
+    const newFabric = prompt('Digite novo tecido:');
+    if (!newFabric) return;
+
+    const formattedFabric = newFabric.trim().toUpperCase();
+
+    setMaterialOptions(prev => {
+      const updated = [...prev, formattedFabric];
+      localStorage.setItem('materialOptions', JSON.stringify(updated));
+      return updated;
+    });
+    setNewProduct(prev => ({ ...prev, material: formattedFabric }));
+  };
+
   const handleEditProduct = (product) => {
     setNewProduct(product);
     setEditingProductId(product.id);
@@ -405,42 +419,108 @@ function Products() {
                   </div>
                 </div>
 
-                {/* Wave Model Fields */}
+                <div className="form-group">
+                  <label>Tecido:</label>
+                  <div className="input-with-button">
+                    <select
+                      name="material"
+                      value={newProduct.material}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Selecione o tecido</option>
+                      {materialOptions.map((option, index) => (
+                        <option key={index} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={handleAddFabric}>
+                      + Novo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Nome:</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newProduct.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Código:</label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={newProduct.code}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Largura Mínima:</label>
+                  <input
+                    type="number"
+                    name="largura_minima"
+                    value={newProduct.largura_minima}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Altura Mínima:</label>
+                  <input
+                    type="number"
+                    name="altura_minima"
+                    value={newProduct.altura_minima}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Área Mínima:</label>
+                  <input
+                    type="number"
+                    name="area_minima"
+                    value={newProduct.area_minima}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Largura Máxima:</label>
+                  <input
+                    type="number"
+                    name="largura_maxima"
+                    value={newProduct.largura_maxima}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Método de Cálculo:</label>
+                  <select
+                    name="calculation_method"
+                    value={newProduct.calculation_method}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="manual">Manual</option>
+                    <option value="m2">Metro Quadrado (m²)</option>
+                    <option value="altura">Altura</option>
+                  </select>
+                </div>
+
                 {newProduct.model.toUpperCase() === 'WAVE' ? (
                   <>
-                    <div className="form-group">
-                      <label>Tecido:</label>
-                      <input
-                        type="text"
-                        name="material"
-                        value={newProduct.material}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Nome:</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={newProduct.name}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Código:</label>
-                      <input
-                        type="text"
-                        name="code"
-                        value={newProduct.code}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
                     <div className="form-group">
                       <label>Margem de Lucro (%):</label>
                       <input
@@ -564,50 +644,13 @@ function Products() {
                 ) : (
                   <>
                     <div className="form-group">
-                      <label>Tecido:</label>
-                      <select
-                        name="material"
-                        value={newProduct.material}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Selecione o tecido</option>
-                        <option value="TRANSLUCIDO">TRANSLUCIDO</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Nome:</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={newProduct.name}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Código:</label>
-                      <input
-                        type="text"
-                        name="code"
-                        value={newProduct.code}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
                       <label>Preço de Custo:</label>
                       <input
                         type="number"
                         name="cost_price"
                         value={newProduct.cost_price}
                         onChange={handleInputChange}
-                        step="0.01"
-                        min="0"
-                        required
+                        required={newProduct.calculation_method === 'manual'}
                       />
                     </div>
 

@@ -1,7 +1,2 @@
 -- Add new Wave-specific columns to produtos table
-ALTER TABLE produtos 
-  ADD COLUMN IF NOT EXISTS instalacao BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS bando BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS trilho_tipo VARCHAR,
-  ADD COLUMN IF NOT EXISTS largura DECIMAL(10,2),
-  ADD COLUMN IF NOT EXISTS valor_trilho DECIMAL(10,2);
+-- All columns were removed as they don't exist in the table structure

@@ -35,12 +35,7 @@ export const produtoService = {
         altura_minima: produto.altura_minima ? parseFloat(produto.altura_minima) : null,
         largura_minima: produto.largura_minima ? parseFloat(produto.largura_minima) : null,
         largura_maxima: produto.largura_maxima ? parseFloat(produto.largura_maxima) : null,
-        area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null,
-        instalacao: produto.instalacao || false,
-        bando: produto.bando || false,
-        trilho_tipo: produto.trilho_tipo || null,
-        largura: produto.largura ? parseFloat(produto.largura) : null,
-        valor_trilho: produto.valor_trilho ? parseFloat(produto.valor_trilho) : null
+        area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null
       }
 
       // Only add wave_pricing_data if it's a Wave model
@@ -81,12 +76,7 @@ export const produtoService = {
         altura_minima: produto.altura_minima ? parseFloat(produto.altura_minima) : null,
         largura_minima: produto.largura_minima ? parseFloat(produto.largura_minima) : null,
         largura_maxima: produto.largura_maxima ? parseFloat(produto.largura_maxima) : null,
-        area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null,
-        instalacao: produto.instalacao || false,
-        bando: produto.bando || false,
-        trilho_tipo: produto.trilho_tipo || null,
-        largura: produto.largura ? parseFloat(produto.largura) : null,
-        valor_trilho: produto.valor_trilho ? parseFloat(produto.valor_trilho) : null
+        area_minima: produto.area_minima ? parseFloat(produto.area_minima) : null
       }
 
       // Only add wave_pricing_data if it's a Wave model
