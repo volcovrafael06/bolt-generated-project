@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './BudgetList.css';
 
-function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget }) {
+function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudget, onReactivateBudget }) {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const filter = queryParams.get('filter');
@@ -139,6 +139,16 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                         <i className="fas fa-times"></i>
                       </button>
                     </>
+                  )}
+
+                  {budget.status === 'cancelado' && (
+                    <button 
+                      onClick={() => onReactivateBudget && onReactivateBudget(budget.id)}
+                      className="action-button reactivate-button"
+                      title="Reativar"
+                    >
+                      <i className="fas fa-rotate-left"></i>
+                    </button>
                   )}
                 </td>
               </tr>

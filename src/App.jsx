@@ -151,7 +151,8 @@ function App() {
       setBudgets(updatedBudgets);
 
       // Update local database
-      await localDB.update('orcamentos', budgetId, { status: 'finalizado' });
+      const updatedBudget = budgets.find(budget => budget.id === budgetId);
+      await localDB.put('orcamentos', updatedBudget);
     } catch (error) {
       console.error('Error finalizing budget:', error);
       alert('Erro ao finalizar orçamento');
@@ -163,7 +164,7 @@ function App() {
       // First check if the budget exists and is in a cancellable state
       const { data: budget, error: fetchError } = await supabase
         .from('orcamentos')
-        .select('status')
+        .select('*')
         .eq('id', budgetId)
         .single();
 
@@ -180,35 +181,71 @@ function App() {
       // Update in Supabase
       const { error: updateError } = await supabase
         .from('orcamentos')
-        .update({ 
-          status: 'cancelado',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'cancelado' })
         .eq('id', budgetId);
 
       if (updateError) throw updateError;
 
       // Update local state
       const updatedBudgets = budgets.map(budget =>
-        budget.id === budgetId ? { 
-          ...budget, 
-          status: 'cancelado',
-          updated_at: new Date().toISOString()
-        } : budget
+        budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
       );
       setBudgets(updatedBudgets);
 
       // Update local database
-      await localDB.update('orcamentos', budgetId, { 
-        status: 'cancelado',
-        updated_at: new Date().toISOString()
-      });
+      const updatedBudget = { ...budget, status: 'cancelado' };
+      await localDB.put('orcamentos', updatedBudget);
 
       // Show success message
       alert('Orçamento cancelado com sucesso');
     } catch (error) {
       console.error('Error canceling budget:', error);
       alert(error.message || 'Erro ao cancelar orçamento');
+    }
+  };
+
+  const handleReactivateBudget = async (budgetId) => {
+    try {
+      // First check if the budget exists and is canceled
+      const { data: budget, error: fetchError } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('id', budgetId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (!budget) {
+        throw new Error('Orçamento não encontrado');
+      }
+
+      if (budget.status !== 'cancelado') {
+        throw new Error('Apenas orçamentos cancelados podem ser reativados');
+      }
+
+      // Update in Supabase
+      const { error: updateError } = await supabase
+        .from('orcamentos')
+        .update({ status: 'pending' })
+        .eq('id', budgetId);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      const updatedBudgets = budgets.map(budget =>
+        budget.id === budgetId ? { ...budget, status: 'pending' } : budget
+      );
+      setBudgets(updatedBudgets);
+
+      // Update local database
+      const updatedBudget = { ...budget, status: 'pending' };
+      await localDB.put('orcamentos', updatedBudget);
+
+      // Show success message
+      alert('Orçamento reativado com sucesso');
+    } catch (error) {
+      console.error('Error reactivating budget:', error);
+      alert(error.message || 'Erro ao reativar orçamento');
     }
   };
 
@@ -368,52 +405,11 @@ function App() {
                   <BudgetList 
                     budgets={budgets}
                     validadeOrcamento={validadeOrcamento}
-                    onFinalizeBudget={async (budgetId) => {
-                      try {
-                        const { error } = await supabase
-                          .from('orcamentos')
-                          .update({ status: 'finalizado' })
-                          .eq('id', budgetId);
-
-                        if (error) throw error;
-
-                        // Atualizar o estado e o cache local
-                        const updatedBudgets = budgets.map(budget =>
-                          budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
-                        );
-                        setBudgets(updatedBudgets);
-                        await localDB.putAll('orcamentos', updatedBudgets);
-                        
-                        alert(`Orçamento ${budgetId} finalizado com sucesso.`);
-                      } catch (error) {
-                        console.error('Error finalizing budget:', error);
-                        alert('Erro ao finalizar orçamento.');
-                      }
-                    }}
-                    onCancelBudget={async (budgetId) => {
-                      try {
-                        const { error } = await supabase
-                          .from('orcamentos')
-                          .update({ status: 'cancelado' })
-                          .eq('id', budgetId);
-
-                        if (error) throw error;
-
-                        // Atualizar o estado e o cache local
-                        const updatedBudgets = budgets.map(budget =>
-                          budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
-                        );
-                        setBudgets(updatedBudgets);
-                        await localDB.putAll('orcamentos', updatedBudgets);
-                        
-                        alert(`Orçamento ${budgetId} cancelado com sucesso.`);
-                      } catch (error) {
-                        console.error('Error canceling budget:', error);
-                        alert('Erro ao cancelar orçamento.');
-                      }
-                    }}
+                    onFinalizeBudget={handleFinalizeBudget}
+                    onCancelBudget={handleCancelBudget}
+                    onReactivateBudget={handleReactivateBudget}
                   />
-                }
+                } 
               />
               <Route 
                 path="/budgets/new" 
