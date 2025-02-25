@@ -1,20 +1,20 @@
 .new-budget-button {
   display: inline-block;
   padding: 10px 20px;
-  margin: 20px 0;
-  background-color: #4CAF50;
+  background-color: #28a745;
   color: white;
   text-decoration: none;
   border-radius: 4px;
-  transition: background-color 0.3s;
+  margin-bottom: 20px;
+  font-weight: 500;
 }
 
 .new-budget-button:hover {
-  background-color: #45a049;
+  background-color: #218838;
 }
 
 .form-group {
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 
 .form-group label {
@@ -23,70 +23,134 @@
 }
 
 .form-group input {
-  padding: 8px;
   width: 100%;
-  max-width: 300px;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
 
 table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
   margin-top: 20px;
+  font-size: 0.9em;
 }
 
 th, td {
-  padding: 12px;
+  padding: 8px 12px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
 
 th {
-  background-color: #f5f5f5;
-  font-weight: bold;
+  background-color: #f8f9fa;
+  font-weight: 600;
 }
 
 tr:hover {
-  background-color: #f9f9f9;
+  background-color: #f5f5f5;
 }
 
-/* Action buttons */
 td button {
-  margin: 0 5px;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  font-weight: 500;
+  margin: 0 5px;
+  transition: background-color 0.2s;
+}
+
+td button:hover {
+  opacity: 0.9;
 }
 
 td button:first-of-type {
-  background-color: #4CAF50;
+  background-color: #28a745;
   color: white;
-}
-
-td button:first-of-type:hover {
-  background-color: #45a049;
 }
 
 td button:last-of-type {
-  background-color: #f44336;
+  background-color: #dc3545;
   color: white;
 }
 
-td button:last-of-type:hover {
-  background-color: #da190b;
-}
-
-/* Links in table */
 td a {
-  margin: 0 5px;
-  color: #2196F3;
+  color: #4a90e2;
   text-decoration: none;
+  margin: 0 5px;
 }
 
 td a:hover {
   text-decoration: underline;
 }
+
+.text-gray-500 {
+  color: #6c757d;
+  font-size: 0.875em;
+}
+
+.actions-cell {
+  white-space: nowrap;
+  padding: 8px 12px;
+  min-width: 240px;
+  width: 240px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.action-buttons a,
+.action-buttons button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  color: white;
+  transition: opacity 0.2s;
+  font-size: 0.85em;
+  min-width: 45px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.action-buttons a:hover,
+.action-buttons button:hover {
+  opacity: 0.9;
+}
+
+.view-button {
+  background-color: #17a2b8;
+}
+
+.edit-button {
+  background-color: #4a90e2;
+}
+
+.finalize-button {
+  background-color: #28a745;
+}
+
+.cancel-button {
+  background-color: #dc3545;
+}
+
+th:nth-child(1), td:nth-child(1) { width: 20%; } /* Cliente */
+th:nth-child(2), td:nth-child(2) { width: 15%; } /* Valor Total */
+th:nth-child(3), td:nth-child(3) { width: 12%; } /* Data de Criação */
+th:nth-child(4), td:nth-child(4) { width: 12%; } /* Válido até */
+th:nth-child(5), td:nth-child(5) { width: 10%; } /* Status */
+th:nth-child(6), td:nth-child(6) { width: 240px; } /* Ações */
