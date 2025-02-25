@@ -540,8 +540,8 @@ function Reports({ budgets: initialBudgets }) {
                   <tr>
                     <td>{new Date(budget.created_at).toLocaleDateString()}</td>
                     <td>{budget.clientes?.name || 'Cliente não encontrado'}</td>
-                    <td>{parseFloat(budget.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td>{parseFloat(budget.valor_negociado || budget.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat(budget.totalValue || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat((budget.totalValue || 0) - (budget.installationFee || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td>{parseFloat(budget.installationFee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td>{parseFloat(budget.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td>{parseFloat(budget.profit || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
