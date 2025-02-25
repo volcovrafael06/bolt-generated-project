@@ -134,18 +134,82 @@ function App() {
     navigate("/login");
   };
 
-  const handleFinalizeBudget = (budgetId) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
-    );
-    setBudgets(updatedBudgets);
+  const handleFinalizeBudget = async (budgetId) => {
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('orcamentos')
+        .update({ status: 'finalizado' })
+        .eq('id', budgetId);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedBudgets = budgets.map(budget =>
+        budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
+      );
+      setBudgets(updatedBudgets);
+
+      // Update local database
+      await localDB.update('orcamentos', budgetId, { status: 'finalizado' });
+    } catch (error) {
+      console.error('Error finalizing budget:', error);
+      alert('Erro ao finalizar orçamento');
+    }
   };
 
-  const handleCancelBudget = (budgetId) => {
-    const updatedBudgets = budgets.map(budget =>
-      budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
-    );
-    setBudgets(updatedBudgets);
+  const handleCancelBudget = async (budgetId) => {
+    try {
+      // First check if the budget exists and is in a cancellable state
+      const { data: budget, error: fetchError } = await supabase
+        .from('orcamentos')
+        .select('status')
+        .eq('id', budgetId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (!budget) {
+        throw new Error('Orçamento não encontrado');
+      }
+
+      if (budget.status !== 'pending') {
+        throw new Error('Apenas orçamentos pendentes podem ser cancelados');
+      }
+
+      // Update in Supabase
+      const { error: updateError } = await supabase
+        .from('orcamentos')
+        .update({ 
+          status: 'cancelado',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', budgetId);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      const updatedBudgets = budgets.map(budget =>
+        budget.id === budgetId ? { 
+          ...budget, 
+          status: 'cancelado',
+          updated_at: new Date().toISOString()
+        } : budget
+      );
+      setBudgets(updatedBudgets);
+
+      // Update local database
+      await localDB.update('orcamentos', budgetId, { 
+        status: 'cancelado',
+        updated_at: new Date().toISOString()
+      });
+
+      // Show success message
+      alert('Orçamento cancelado com sucesso');
+    } catch (error) {
+      console.error('Error canceling budget:', error);
+      alert(error.message || 'Erro ao cancelar orçamento');
+    }
   };
 
   const toggleSidebar = () => {

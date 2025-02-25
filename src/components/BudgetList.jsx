@@ -110,7 +110,7 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                     className="action-button view-button"
                     title="Visualizar"
                   >
-                    <i className="fas fa-search"></i>
+                    <i className="fas fa-magnifying-glass"></i>
                   </button>
 
                   <button 
@@ -121,21 +121,25 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                     <i className="fas fa-pencil"></i>
                   </button>
 
-                  <button 
-                    onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}
-                    className="action-button approve-button"
-                    title="Aprovar"
-                  >
-                    <i className="fas fa-check"></i>
-                  </button>
+                  {budget.status === 'pending' && (
+                    <>
+                      <button 
+                        onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}
+                        className="action-button approve-button"
+                        title="Aprovar"
+                      >
+                        <i className="fas fa-check"></i>
+                      </button>
 
-                  <button 
-                    onClick={() => onCancelBudget && onCancelBudget(budget.id)}
-                    className="action-button cancel-button"
-                    title="Cancelar"
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
+                      <button 
+                        onClick={() => onCancelBudget && onCancelBudget(budget.id)}
+                        className="action-button cancel-button"
+                        title="Cancelar"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
