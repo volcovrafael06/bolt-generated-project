@@ -89,7 +89,7 @@ function BudgetList({ budgets, validadeOrcamento, onFinalizeBudget, onCancelBudg
                 <td>
                   <Link to={`/budgets/${budget.id}/view`}>Visualizar</Link> |
                   <Link to={`/budgets/${budget.id}/edit`}>Editar</Link>
-                  {(budget.status === 'pending' || !budget.status) && (
+                  {(budget.status === 'pendente' || !budget.status) && (
                     <>
                       {' | '}
                       <button onClick={() => onFinalizeBudget && onFinalizeBudget(budget.id)}>Finalizar</button>

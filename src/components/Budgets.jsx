@@ -748,6 +748,12 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
 
     const productToAdd = {
       ...currentProduct,
+      produto: {
+        id: currentProduct.product.id,
+        nome: currentProduct.product.nome,
+        name: currentProduct.product.name
+      },
+      produto_id: currentProduct.product.id,
       inputWidth: parseFloat(currentProduct.width) || 0,
       inputHeight: parseFloat(currentProduct.height) || 0,
       width: dimensions.width,
@@ -896,7 +902,7 @@ function Budgets({ budgets, setBudgets, customers: initialCustomers, products: i
       }
 
       const cleanProducts = newBudget.products.map(product => ({
-        produto_id: product.product.id,
+        produto_id: product.produto.id,
         largura: parseFloat(product.width),
         altura: product.height ? parseFloat(product.height) : null,
         bando: product.bando,

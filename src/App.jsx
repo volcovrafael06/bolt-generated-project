@@ -313,11 +313,14 @@ function App() {
 
                         if (error) throw error;
 
+                        // Atualizar o estado e o cache local
                         const updatedBudgets = budgets.map(budget =>
                           budget.id === budgetId ? { ...budget, status: 'finalizado' } : budget
                         );
                         setBudgets(updatedBudgets);
-                        alert(`Orçamento ${budgetId} finalizado.`);
+                        await localDB.putAll('orcamentos', updatedBudgets);
+                        
+                        alert(`Orçamento ${budgetId} finalizado com sucesso.`);
                       } catch (error) {
                         console.error('Error finalizing budget:', error);
                         alert('Erro ao finalizar orçamento.');
@@ -332,11 +335,14 @@ function App() {
 
                         if (error) throw error;
 
+                        // Atualizar o estado e o cache local
                         const updatedBudgets = budgets.map(budget =>
                           budget.id === budgetId ? { ...budget, status: 'cancelado' } : budget
                         );
                         setBudgets(updatedBudgets);
-                        alert(`Orçamento ${budgetId} cancelado.`);
+                        await localDB.putAll('orcamentos', updatedBudgets);
+                        
+                        alert(`Orçamento ${budgetId} cancelado com sucesso.`);
                       } catch (error) {
                         console.error('Error canceling budget:', error);
                         alert('Erro ao cancelar orçamento.');

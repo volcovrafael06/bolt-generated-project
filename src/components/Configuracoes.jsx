@@ -96,38 +96,39 @@ function Configuracoes({ setCompanyLogo }) {
       if (error) throw error;
 
       if (data) {
+        console.log('Carregando preços dos trilhos:', data);
         data.forEach(item => {
           switch (item.rail_type) {
-            case 'trilho_redondo_comando':
-              setTrilhoRedondoCusto(item.cost_price);
-              setTrilhoRedondoVenda(item.sale_price);
+            case 'trilho_redondo_com_comando':
+              setTrilhoRedondoCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoRedondoVenda(parseFloat(item.sale_price) || 0);
               break;
-            case 'trilho_slim_comando':
-              setTrilhoSlimCusto(item.cost_price);
-              setTrilhoSlimVenda(item.sale_price);
+            case 'trilho_slim_com_comando':
+              setTrilhoSlimCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoSlimVenda(parseFloat(item.sale_price) || 0);
               break;
-            case 'trilho_quadrado_gancho':
-              setTrilhoQuadradoCusto(item.cost_price);
-              setTrilhoQuadradoVenda(item.sale_price);
+            case 'trilho_quadrado_com_rodizio_em_gancho':
+              setTrilhoQuadradoCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoQuadradoVenda(parseFloat(item.sale_price) || 0);
               break;
             case 'trilho_redondo_sem_comando':
-              setTrilhoRedondoSemComandoCusto(item.cost_price);
-              setTrilhoRedondoSemComandoVenda(item.sale_price);
+              setTrilhoRedondoSemComandoCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoRedondoSemComandoVenda(parseFloat(item.sale_price) || 0);
               break;
             case 'trilho_slim_sem_comando':
-              setTrilhoSlimSemComandoCusto(item.cost_price);
-              setTrilhoSlimSemComandoVenda(item.sale_price);
+              setTrilhoSlimSemComandoCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoSlimSemComandoVenda(parseFloat(item.sale_price) || 0);
               break;
             case 'trilho_motorizado':
-              setTrilhoMotorizadoCusto(item.cost_price);
-              setTrilhoMotorizadoVenda(item.sale_price);
+              setTrilhoMotorizadoCusto(parseFloat(item.cost_price) || 0);
+              setTrilhoMotorizadoVenda(parseFloat(item.sale_price) || 0);
               break;
           }
         });
       }
     } catch (err) {
       setError(err.message);
-      console.error("Error loading rail pricing:", err);
+      console.error("Erro ao carregar preços dos trilhos:", err);
     }
   };
 
@@ -272,33 +273,80 @@ function Configuracoes({ setCompanyLogo }) {
       setLoading(true);
       setError(null);
 
-      const updates = {
-        cnpj,
-        razao_social: razaoSocial,
-        nome_fantasia: nomeFantasia,
-        endereco,
-        telefone,
-        validade_orcamento: validadeOrcamento,
-        formula_m2: formulaM2,
-        formula_comprimento: formulaComprimento,
-        formula_bando: formulaBando,
-        formula_instalacao: formulaInstalacao,
-        company_logo: localCompanyLogo,
-        bando_custo: bandoCusto,
-        bando_venda: bandoVenda
-      };
-
-      const { error } = await supabase
+      // Salvar configurações gerais
+      const { error: configError } = await supabase
         .from('configuracoes')
-        .update(updates)
+        .update({
+          cnpj,
+          razao_social: razaoSocial,
+          nome_fantasia: nomeFantasia,
+          endereco,
+          telefone,
+          validade_orcamento: validadeOrcamento,
+          formula_m2: formulaM2,
+          formula_comprimento: formulaComprimento,
+          formula_bando: formulaBando,
+          formula_instalacao: formulaInstalacao,
+          company_logo: localCompanyLogo,
+          bando_custo: bandoCusto,
+          bando_venda: bandoVenda
+        })
         .eq('id', 1);
 
-      if (error) throw error;
+      if (configError) throw configError;
+
+      // Salvar preços dos trilhos
+      const railUpdates = [
+        {
+          rail_type: 'trilho_redondo_com_comando',
+          cost_price: trilhoRedondoCusto,
+          sale_price: trilhoRedondoVenda
+        },
+        {
+          rail_type: 'trilho_slim_com_comando',
+          cost_price: trilhoSlimCusto,
+          sale_price: trilhoSlimVenda
+        },
+        {
+          rail_type: 'trilho_quadrado_com_rodizio_em_gancho',
+          cost_price: trilhoQuadradoCusto,
+          sale_price: trilhoQuadradoVenda
+        },
+        {
+          rail_type: 'trilho_redondo_sem_comando',
+          cost_price: trilhoRedondoSemComandoCusto,
+          sale_price: trilhoRedondoSemComandoVenda
+        },
+        {
+          rail_type: 'trilho_slim_sem_comando',
+          cost_price: trilhoSlimSemComandoCusto,
+          sale_price: trilhoSlimSemComandoVenda
+        },
+        {
+          rail_type: 'trilho_motorizado',
+          cost_price: trilhoMotorizadoCusto,
+          sale_price: trilhoMotorizadoVenda
+        }
+      ];
+
+      // Atualizar cada tipo de trilho
+      for (const update of railUpdates) {
+        const { error: railError } = await supabase
+          .from('rail_pricing')
+          .update({ 
+            cost_price: update.cost_price,
+            sale_price: update.sale_price
+          })
+          .eq('rail_type', update.rail_type);
+
+        if (railError) throw railError;
+      }
 
       setSaveMessage('Configurações salvas com sucesso!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
       setError(err.message);
+      console.error("Erro ao salvar configurações:", err);
     } finally {
       setLoading(false);
     }
@@ -308,17 +356,17 @@ function Configuracoes({ setCompanyLogo }) {
     try {
       const updates = [
         {
-          rail_type: 'trilho_redondo_comando',
+          rail_type: 'trilho_redondo_com_comando',
           cost_price: trilhoRedondoCusto,
           sale_price: trilhoRedondoVenda
         },
         {
-          rail_type: 'trilho_slim_comando',
+          rail_type: 'trilho_slim_com_comando',
           cost_price: trilhoSlimCusto,
           sale_price: trilhoSlimVenda
         },
         {
-          rail_type: 'trilho_quadrado_gancho',
+          rail_type: 'trilho_quadrado_com_rodizio_em_gancho',
           cost_price: trilhoQuadradoCusto,
           sale_price: trilhoQuadradoVenda
         },

@@ -8,6 +8,7 @@ function Reports({ budgets: initialBudgets }) {
   const [endDate, setEndDate] = useState('');
   const [reportData, setReportData] = useState([]);
   const [budgets, setBudgets] = useState(initialBudgets || []);
+  const [expandedBudgets, setExpandedBudgets] = useState(new Set());
   const [summary, setSummary] = useState({
     totalBudgets: 0,
     finalized: 0,
@@ -55,36 +56,55 @@ function Reports({ budgets: initialBudgets }) {
   }, [budgets, period, startDate, endDate]);
 
   const calculateDimensions = (product, width, height) => {
-    // Converter strings para números
-    const inputWidth = parseFloat(width) || 0;
-    const inputHeight = parseFloat(height) || 0;
+    console.log('Calculando dimensões:', { product, width, height });
     
-    // Obter as dimensões mínimas do produto
     const minWidth = parseFloat(product.largura_minima) || 0;
     const minHeight = parseFloat(product.altura_minima) || 0;
-    const minArea = parseFloat(product.area_minima) || 0;
     
-    // Calcular dimensões finais
-    let finalWidth = Math.max(inputWidth, minWidth);
-    let finalHeight = Math.max(inputHeight, minHeight);
+    const finalWidth = Math.max(parseFloat(width) || 0, minWidth);
+    const finalHeight = Math.max(parseFloat(height) || 0, minHeight);
     
-    // Calcular área
-    const area = finalWidth * finalHeight;
+    const usedMinimum = finalWidth > parseFloat(width) || finalHeight > parseFloat(height);
     
-    // Se houver área mínima definida e a área calculada for menor
-    if (minArea > 0 && area < minArea) {
-      // Ajustar proporcionalmente as dimensões para atingir a área mínima
-      const ratio = Math.sqrt(minArea / area);
-      finalWidth *= ratio;
-      finalHeight *= ratio;
-    }
-    
+    console.log('Dimensões calculadas:', {
+      width: finalWidth,
+      height: finalHeight,
+      usedMinimum,
+      minimos: { minWidth, minHeight },
+      originais: { width, height }
+    });
+
     return {
       width: finalWidth,
       height: finalHeight,
-      area: finalWidth * finalHeight,
-      usedMinimum: finalWidth > inputWidth || finalHeight > inputHeight || (minArea > 0 && area < minArea)
+      usedMinimum
     };
+  };
+
+  const getWavePrice = (height, pricingData) => {
+    try {
+      const pricing = JSON.parse(pricingData);
+      
+      // Encontrar a faixa de preço correta baseada na altura
+      const priceRange = pricing.find(range => 
+        height >= parseFloat(range.min_height) && 
+        height <= parseFloat(range.max_height)
+      );
+
+      if (!priceRange) {
+        console.error('Faixa de preço não encontrada para altura:', height);
+        return { cost: 0, value: 0 };
+      }
+
+      // Retorna o preço por metro
+      return {
+        cost: parseFloat(priceRange.price) || 0,
+        value: parseFloat(priceRange.sale_price) || 0
+      };
+    } catch (error) {
+      console.error('Erro ao processar wave_pricing_data:', error);
+      return { cost: 0, value: 0 };
+    }
   };
 
   const calculateProductCost = async (product) => {
@@ -92,379 +112,328 @@ function Reports({ budgets: initialBudgets }) {
       console.log('Calculando custo para produto:', product);
       
       // Buscar o produto no banco para obter o preço de custo
-      const { data: productData } = await supabase
+      const { data: productData, error } = await supabase
         .from('produtos')
         .select('*')
         .eq('id', product.produto_id)
         .single();
 
-      console.log('Dados do produto:', productData);
+      if (error) {
+        console.error('Erro ao buscar produto:', error);
+        return {
+          productCost: 0,
+          productValue: 0,
+          bandoCost: 0,
+          bandoValue: 0,
+          trilhoCost: 0,
+          trilhoValue: 0,
+          dimensions: { width: 0, height: 0, usedMinimum: false }
+        };
+      }
 
-      if (!productData) return { 
-        productCost: 0, 
-        bandoCost: 0, 
-        accessoriesCost: 0,
-        accessoriesValue: 0,
-        dimensions: { width: 0, height: 0, usedMinimum: false } 
-      };
+      if (!productData) {
+        console.error('Produto não encontrado:', product.produto_id);
+        return {
+          productCost: 0,
+          productValue: 0,
+          bandoCost: 0,
+          bandoValue: 0,
+          trilhoCost: 0,
+          trilhoValue: 0,
+          dimensions: { width: 0, height: 0, usedMinimum: false }
+        };
+      }
 
       // Calcular as dimensões considerando os mínimos
       const dimensions = calculateDimensions(
         productData,
-        product.largura,
-        product.altura
+        product.largura || product.width,
+        product.altura || product.height
       );
-
-      const costPrice = parseFloat(productData.preco_custo) || 0;
 
       // Calcula o custo baseado no modelo usando as dimensões calculadas
       let productCost = 0;
-      if (productData.modelo?.toUpperCase() === 'WAVE') {
-        productCost = dimensions.width * costPrice;
-      } else {
+      let productValue = 0;
+
+      if (productData.modelo?.toUpperCase() === 'WAVE' && productData.wave_pricing_data) {
+        // Para WAVE, pegamos o preço da faixa e multiplicamos pela altura
+        const { cost, value } = getWavePrice(dimensions.height, productData.wave_pricing_data);
+        productCost = cost * dimensions.height;
+        productValue = value * dimensions.height;
+        
+        console.log('Cálculo WAVE:', {
+          altura: dimensions.height,
+          preco_por_metro: { cost, value },
+          custo_final: productCost,
+          valor_final: productValue,
+          formula: 'preço da faixa * altura'
+        });
+      } else if (productData.modelo?.toUpperCase() === 'SCREEN') {
+        // Para SCREEN, multiplicamos largura x altura
+        const costPrice = parseFloat(productData.preco_custo) || 0;
+        const salePrice = parseFloat(productData.preco_venda) || 0;
         productCost = dimensions.width * dimensions.height * costPrice;
+        productValue = dimensions.width * dimensions.height * salePrice;
+        
+        console.log('Cálculo SCREEN:', {
+          largura: dimensions.width,
+          altura: dimensions.height,
+          preco_custo: costPrice,
+          preco_venda: salePrice,
+          custo_final: productCost,
+          valor_final: productValue,
+          formula: 'largura * altura * preço'
+        });
+      } else {
+        // Para outros modelos, multiplicamos largura x altura
+        const costPrice = parseFloat(productData.preco_custo) || 0;
+        const salePrice = parseFloat(productData.preco_venda) || 0;
+        productCost = dimensions.width * dimensions.height * costPrice;
+        productValue = dimensions.width * dimensions.height * salePrice;
+        
+        console.log('Cálculo Padrão:', {
+          largura: dimensions.width,
+          altura: dimensions.height,
+          preco_custo: costPrice,
+          preco_venda: salePrice,
+          custo_final: productCost,
+          valor_final: productValue,
+          formula: 'largura * altura * preço'
+        });
       }
 
-      // Buscar configurações para o preço do bandô
+      console.log('Custos finais calculados:', {
+        produto: { custo: productCost, venda: productValue },
+        bando: { custo: 0, venda: 0 },
+        trilho: { custo: 0, venda: 0 }
+      });
+
+      // Buscar configurações para o preço do bandô e trilho
       const { data: configData } = await supabase
         .from('configuracoes')
-        .select('bando_custo, bando_venda')
+        .select('*')
         .single();
 
-      // Calcula o custo e valor do bandô se existir, usando a largura calculada
+      // Buscar preços dos trilhos
+      const { data: railPricing } = await supabase
+        .from('rail_pricing')
+        .select('*');
+
       let bandoCost = 0;
       let bandoValue = 0;
-      
-      if (product.bando) {
-        const bandoCustoConfig = configData?.bando_custo || 80;
-        bandoCost = dimensions.width * bandoCustoConfig;
-        bandoValue = dimensions.width * (configData?.bando_venda || 120);
+      let trilhoCost = 0;
+      let trilhoValue = 0;
+
+      if (product.bando && configData) {
+        bandoCost = dimensions.width * (parseFloat(configData.bando_custo) || 0);
+        bandoValue = dimensions.width * (parseFloat(configData.bando_venda) || 0);
       }
 
-      // Calcula custo e valor dos acessórios
-      let accessoriesCost = 0;
-      let accessoriesValue = 0;
-      let acessorios = [];
-      
-      // Buscar acessórios do orçamento
-      if (product.acessorios_json) {
-        try {
-          console.log('Acessórios JSON:', product.acessorios_json);
-          const acessoriosData = JSON.parse(product.acessorios_json);
-          console.log('Acessórios parseados:', acessoriosData);
-          
-          // Buscar detalhes dos acessórios no banco
-          for (const acessorio of acessoriosData) {
-            console.log('Processando acessório:', acessorio);
-            
-            // Primeiro vamos verificar se conseguimos buscar qualquer acessório
-            const { data: allAccessories, error: listError } = await supabase
-              .from('accessories')
-              .select('*')
-              .limit(1);
-              
-            console.log('Teste de busca de acessórios:', { allAccessories, listError });
-            
-            // Agora tentamos buscar o acessório específico
-            const { data: accessoryData, error } = await supabase
-              .from('accessories')
-              .select('*')
-              .eq('id', acessorio.accessory_id)
-              .single();
-              
-            console.log('Busca do acessório específico:', {
-              id: acessorio.accessory_id,
-              data: accessoryData,
-              error
-            });
-            
-            if (error) {
-              console.error('Erro ao buscar acessório:', error);
-              continue;
-            }
-            
-            if (accessoryData) {
-              const quantidade = parseInt(acessorio.quantity, 10) || 0;
-              console.log('Dados completos do acessório:', accessoryData);
-              
-              if (!accessoryData.colors) {
-                console.error('Acessório não tem array de cores:', accessoryData);
-                continue;
-              }
-              
-              const cor = accessoryData.colors.find(c => c.color === acessorio.color);
-              console.log('Cor procurada:', acessorio.color);
-              console.log('Cores disponíveis:', accessoryData.colors);
-              console.log('Cor encontrada:', cor);
-              
-              if (cor) {
-                const precoCusto = parseFloat(cor.cost_price) || 0;
-                const precoVenda = parseFloat(cor.sale_price) || 0;
-                
-                accessoriesCost += quantidade * precoCusto;
-                accessoriesValue += quantidade * precoVenda;
-                
-                acessorios.push({
-                  ...acessorio,
-                  nome: accessoryData.name,
-                  preco_custo: precoCusto,
-                  valor: precoVenda
-                });
+      if (product.trilho_tipo && railPricing) {
+        // Mapear os tipos de trilho do banco para os tipos do sistema
+        const trilhoTypeMap = {
+          'trilho_redondo_com_comando': 'trilho_redondo_com_comando',
+          'trilho_redondo_sem_comando': 'trilho_redondo_sem_comando',
+          'trilho_slim_com_comando': 'trilho_slim_com_comando',
+          'trilho_slim_sem_comando': 'trilho_slim_sem_comando',
+          'trilho_quadrado_com_rodizio_em_gancho': 'trilho_quadrado_com_rodizio_em_gancho',
+          'trilho_motorizado': 'trilho_motorizado'
+        };
 
-                console.log('Acessório processado com sucesso:', {
-                  nome: accessoryData.name,
-                  quantidade,
-                  precoCusto,
-                  precoVenda,
-                  custoTotal: quantidade * precoCusto,
-                  valorTotal: quantidade * precoVenda
-                });
-              } else {
-                console.error('Cor não encontrada:', acessorio.color);
-              }
-            } else {
-              console.error('Acessório não encontrado:', acessorio.accessory_id);
-            }
-          }
-        } catch (e) {
-          console.error('Erro ao processar acessórios:', e);
+        const railType = trilhoTypeMap[product.trilho_tipo];
+        const railData = railPricing.find(rail => rail.rail_type === railType);
+
+        if (railData) {
+          trilhoCost = dimensions.width * (parseFloat(railData.cost_price) || 0);
+          trilhoValue = dimensions.width * (parseFloat(railData.sale_price) || 0);
+          
+          console.log('Cálculo Trilho:', {
+            tipo: product.trilho_tipo,
+            tipo_banco: railType,
+            largura: dimensions.width,
+            preco_custo: railData.cost_price,
+            preco_venda: railData.sale_price,
+            custo_final: trilhoCost,
+            valor_final: trilhoValue,
+            formula: 'largura * preço'
+          });
+        } else {
+          console.error('Tipo de trilho não encontrado:', product.trilho_tipo);
         }
       }
 
-      const result = { 
-        productCost, 
+      console.log('Custos finais calculados:', {
+        produto: { custo: productCost, venda: productValue },
+        bando: { custo: bandoCost, venda: bandoValue },
+        trilho: { custo: trilhoCost, venda: trilhoValue }
+      });
+
+      return {
+        productCost,
+        productValue,
         bandoCost,
         bandoValue,
-        accessoriesCost,
-        accessoriesValue,
-        acessorios,
-        dimensions 
+        trilhoCost,
+        trilhoValue,
+        dimensions
       };
-
-      console.log('Resultado final do cálculo:', result);
-      return result;
     } catch (error) {
       console.error('Erro ao calcular custo do produto:', error);
-      return { 
-        productCost: 0, 
+      return {
+        productCost: 0,
+        productValue: 0,
         bandoCost: 0,
         bandoValue: 0,
-        accessoriesCost: 0,
-        accessoriesValue: 0,
-        acessorios: [],
+        trilhoCost: 0,
+        trilhoValue: 0,
         dimensions: { width: 0, height: 0, usedMinimum: false }
       };
     }
   };
 
   const processReportData = async () => {
-    if (!budgets) return;
+    try {
+      let filteredBudgets = [...budgets];
 
-    let filteredBudgets = [...budgets];
+      // Aplicar filtros de data se necessário
+      if (period === 'custom' && startDate && endDate) {
+        filteredBudgets = filteredBudgets.filter(budget => {
+          const budgetDate = new Date(budget.created_at);
+          return budgetDate >= new Date(startDate) && budgetDate <= new Date(endDate);
+        });
+      } else if (period === 'monthly') {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        filteredBudgets = filteredBudgets.filter(budget => {
+          const budgetDate = new Date(budget.created_at);
+          return budgetDate >= firstDay;
+        });
+      }
 
-    if (period === 'custom' && startDate && endDate) {
-      filteredBudgets = filteredBudgets.filter(budget => {
-        const budgetDate = new Date(budget.created_at);
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        return budgetDate >= start && budgetDate <= end;
-      });
-    } else {
-      const today = new Date();
-      
-      filteredBudgets = filteredBudgets.filter(budget => {
-        const budgetDate = new Date(budget.created_at);
-        
-        switch (period) {
-          case 'daily':
-            return budgetDate.getDate() === today.getDate() &&
-                   budgetDate.getMonth() === today.getMonth() &&
-                   budgetDate.getFullYear() === today.getFullYear();
+      // Processar cada orçamento
+      const processedBudgets = await Promise.all(
+        filteredBudgets.map(async budget => {
+          console.log('Processando orçamento:', budget);
           
-          case 'weekly':
-            const budgetTime = budgetDate.getTime();
-            const todayTime = today.getTime();
-            const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-            const weekStart = todayTime - oneWeek;
-            return budgetTime >= weekStart && budgetTime <= todayTime;
-          
-          case 'monthly':
-            return budgetDate.getMonth() === today.getMonth() &&
-                   budgetDate.getFullYear() === today.getFullYear();
-          
-          case 'yearly':
-            return budgetDate.getFullYear() === today.getFullYear();
-            
-          default:
-            return true; // No filter if period is not recognized
-        }
-      });
-    }
+          // Garantir que produtos_json seja um array
+          let produtos = [];
+          try {
+            produtos = JSON.parse(budget.produtos_json || '[]');
+          } catch (error) {
+            console.error('Erro ao fazer parse dos produtos:', error);
+            produtos = budget.produtos || [];
+          }
 
-    // Process the budgets data
-    const processedBudgets = await Promise.all(
-      filteredBudgets.map(async budget => {
-        console.log('Processando orçamento:', budget);
-        const produtos = JSON.parse(budget.produtos_json || '[]');
-        const acessoriosData = JSON.parse(budget.acessorios_json || '[]');
-        console.log('Acessórios do orçamento:', acessoriosData);
-        
-        // Calculate total installation fee (não é receita, é repasse)
-        const installationFee = produtos.reduce((sum, prod) => {
-          return sum + (prod.instalacao ? (parseFloat(prod.valor_instalacao) || 0) : 0);
-        }, 0);
+          // Processar cada produto
+          const processedProducts = await Promise.all(
+            produtos.map(async (prod) => {
+              const productId = prod.product?.id || prod.produto_id;
+              console.log('Processando produto:', { prod, productId });
 
-        // Processar acessórios
-        let accessoriesCost = 0;
-        let accessoriesValue = 0;
-        let processedAcessorios = [];
+              // Buscar dados do produto
+              const { data: productData } = await supabase
+                .from('produtos')
+                .select('*')
+                .eq('id', productId)
+                .single();
 
-        for (const acessorio of acessoriosData) {
-          console.log('Processando acessório:', acessorio);
-          
-          // Primeiro vamos verificar se conseguimos buscar qualquer acessório
-          const { data: allAccessories, error: listError } = await supabase
-            .from('accessories')
-            .select('*')
-            .limit(1);
-            
-          console.log('Teste de busca de acessórios:', { allAccessories, listError });
-          
-          // Agora tentamos buscar o acessório específico
-          const { data: accessoryData, error } = await supabase
-            .from('accessories')
-            .select('*')
-            .eq('id', acessorio.accessory_id)
-            .single();
-            
-          console.log('Busca do acessório específico:', {
-            id: acessorio.accessory_id,
-            data: accessoryData,
-            error
+              console.log('Dados do produto encontrado:', productData);
+
+              // Calcular custos
+              const costs = await calculateProductCost({
+                ...prod,
+                produto_id: productId,
+                largura: prod.largura || prod.width,
+                altura: prod.altura || prod.height,
+                bando: prod.bando,
+                trilho_tipo: prod.trilho_tipo,
+                instalacao: prod.instalacao,
+                valor_instalacao: prod.valor_instalacao
+              });
+
+              console.log('Custos calculados:', costs);
+
+              const productTotal = costs.productValue + costs.bandoValue + costs.trilhoValue;
+              const productCost = costs.productCost + costs.bandoCost + costs.trilhoCost;
+              const installationValue = prod.instalacao ? (parseFloat(prod.valor_instalacao) || 0) : 0;
+
+              return {
+                ...prod,
+                produto: productData,
+                cost: costs,
+                total: productTotal + installationValue,
+                totalCost: productCost
+              };
+            })
+          );
+
+          // Calcular totais
+          let totalCost = 0;
+          let totalValue = 0;
+          let installationFee = 0;
+
+          processedProducts.forEach(prod => {
+            totalCost += prod.totalCost || 0;
+            totalValue += prod.total || 0;
+            if (prod.instalacao) {
+              installationFee += parseFloat(prod.valor_instalacao) || 0;
+            }
           });
-            
-          if (error) {
-            console.error('Erro ao buscar acessório:', error);
-            continue;
-          }
-            
-          if (accessoryData) {
-            const quantidade = parseInt(acessorio.quantity, 10) || 0;
-            console.log('Dados completos do acessório:', accessoryData);
-            
-            if (!accessoryData.colors) {
-              console.error('Acessório não tem array de cores:', accessoryData);
-              continue;
-            }
-            
-            const cor = accessoryData.colors.find(c => c.color === acessorio.color);
-            console.log('Cor procurada:', acessorio.color);
-            console.log('Cores disponíveis:', accessoryData.colors);
-            console.log('Cor encontrada:', cor);
-            
-            if (cor) {
-              const precoCusto = parseFloat(cor.cost_price) || 0;
-              const precoVenda = parseFloat(cor.sale_price) || 0;
-              
-              accessoriesCost += quantidade * precoCusto;
-              accessoriesValue += quantidade * precoVenda;
-              
-              processedAcessorios.push({
-                ...acessorio,
-                nome: accessoryData.name,
-                preco_custo: precoCusto,
-                valor: precoVenda
-              });
 
-              console.log('Acessório processado com sucesso:', {
-                nome: accessoryData.name,
-                quantidade,
-                precoCusto,
-                precoVenda,
-                custoTotal: quantidade * precoCusto,
-                valorTotal: quantidade * precoVenda
-              });
-            } else {
-              console.error('Cor não encontrada:', acessorio.color);
-            }
-          } else {
-            console.error('Acessório não encontrado:', acessorio.accessory_id);
-          }
-        }
+          const valueWithoutInstallation = totalValue - installationFee;
+          const profit = valueWithoutInstallation - totalCost;
+          const margin = valueWithoutInstallation > 0 ? (profit / valueWithoutInstallation) * 100 : 0;
 
-        console.log('Acessórios processados:', processedAcessorios);
-        console.log('Custo total dos acessórios:', accessoriesCost);
-        console.log('Valor total dos acessórios:', accessoriesValue);
+          console.log('Totais calculados:', {
+            totalCost,
+            totalValue,
+            installationFee,
+            valueWithoutInstallation,
+            profit,
+            margin
+          });
 
-        // Calculate costs for each product
-        const productCosts = await Promise.all(
-          produtos.map(async prod => {
-            const cost = await calculateProductCost(prod);
-            return cost;
-          })
-        );
+          return {
+            ...budget,
+            produtos: processedProducts,
+            totalCost,
+            totalValue,
+            installationFee,
+            profit,
+            margin
+          };
+        })
+      );
 
-        // Combinar os produtos com seus custos calculados
-        const produtosProcessados = produtos.map((prod, index) => ({
-          ...prod,
-          cost: productCosts[index]
-        }));
+      // Calcular estatísticas
+      const finalized = processedBudgets.filter(b => b.status === 'finalizado');
+      const pending = processedBudgets.filter(b => b.status === 'pendente' || !b.status);
+      const canceled = processedBudgets.filter(b => b.status === 'cancelado');
 
-        const totalProductCost = productCosts.reduce((sum, cost) => sum + cost.productCost, 0);
-        const totalBandoCost = productCosts.reduce((sum, cost) => sum + cost.bandoCost, 0);
-        const totalBandoValue = productCosts.reduce((sum, cost) => sum + cost.bandoValue, 0);
+      const totalRevenue = finalized.reduce((sum, b) => sum + (b.totalValue || 0), 0);
+      const totalInstallation = finalized.reduce((sum, b) => sum + (b.installationFee || 0), 0);
+      const totalCosts = finalized.reduce((sum, b) => sum + (b.totalCost || 0), 0);
+      const revenueWithoutInstallation = totalRevenue - totalInstallation;
+      const totalProfit = revenueWithoutInstallation - totalCosts;
+      const profitMargin = revenueWithoutInstallation > 0 ? (totalProfit / revenueWithoutInstallation) * 100 : 0;
 
-        const totalCost = totalProductCost + totalBandoCost + accessoriesCost;
-        const totalValue = parseFloat(budget.valor_negociado || budget.valor_total) || 0;
-        const saleValueWithoutInstallation = totalValue - installationFee;
-        const profit = saleValueWithoutInstallation - totalCost;
-        const margin = saleValueWithoutInstallation > 0 ? (profit / saleValueWithoutInstallation) * 100 : 0;
+      setSummary({
+        total: processedBudgets.length,
+        finalized: finalized.length,
+        pending: pending.length,
+        canceled: canceled.length,
+        totalRevenue,
+        totalInstallation,
+        totalCosts,
+        totalProfit,
+        profitMargin,
+        averageTicket: finalized.length > 0 ? revenueWithoutInstallation / finalized.length : 0
+      });
 
-        return {
-          ...budget,
-          produtos: produtosProcessados,
-          acessorios: processedAcessorios,
-          accessoriesCost,
-          accessoriesValue,
-          installationFee,
-          totalProductCost,
-          totalBandoCost,
-          totalBandoValue,
-          totalCost,
-          totalValue,
-          originalValue: parseFloat(budget.valor_total) || 0,
-          profit,
-          margin
-        };
-      })
-    );
-
-    // Calculate summary statistics
-    const finalized = processedBudgets.filter(b => b.status === 'finalizado');
-    const pending = processedBudgets.filter(b => b.status === 'pendente');
-    const canceled = processedBudgets.filter(b => b.status === 'cancelado');
-
-    const totalRevenue = finalized.reduce((sum, b) => sum + b.totalValue, 0);
-    const totalInstallation = finalized.reduce((sum, b) => sum + b.installationFee, 0);
-    const totalCosts = finalized.reduce((sum, b) => sum + b.totalCost, 0);
-    const revenueWithoutInstallation = totalRevenue - totalInstallation;
-    const totalProfit = revenueWithoutInstallation - totalCosts;
-    const profitMargin = revenueWithoutInstallation > 0 ? (totalProfit / revenueWithoutInstallation) * 100 : 0;
-
-    setSummary({
-      total: processedBudgets.length,
-      finalized: finalized.length,
-      pending: pending.length,
-      canceled: canceled.length,
-      totalRevenue,
-      totalInstallation,
-      totalCosts,
-      totalProfit,
-      profitMargin,
-      averageTicket: finalized.length > 0 ? totalRevenue / finalized.length : 0
-    });
-
-    setReportData(processedBudgets);
+      setReportData(processedBudgets);
+    } catch (error) {
+      console.error('Erro ao processar dados do relatório:', error);
+    }
   };
 
   const handlePeriodChange = (event) => {
@@ -476,13 +445,15 @@ function Reports({ budgets: initialBudgets }) {
   };
 
   const toggleProductDetails = (budgetId) => {
-    setReportData(data => 
-      data.map(item => 
-        item.id === budgetId 
-          ? { ...item, showDetails: !item.showDetails }
-          : item
-      )
-    );
+    setExpandedBudgets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(budgetId)) {
+        newSet.delete(budgetId);
+      } else {
+        newSet.add(budgetId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -564,99 +535,74 @@ function Reports({ budgets: initialBudgets }) {
               </tr>
             </thead>
             <tbody>
-              {reportData.map(item => (
-                <React.Fragment key={item.id}>
+              {reportData.map(budget => (
+                <React.Fragment key={budget.id}>
                   <tr>
-                    <td>{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
-                    <td>{item.clientes?.name || 'Cliente não encontrado'}</td>
+                    <td>{new Date(budget.created_at).toLocaleDateString()}</td>
+                    <td>{budget.clientes?.name || 'Cliente não encontrado'}</td>
+                    <td>{parseFloat(budget.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat(budget.valor_negociado || budget.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat(budget.installationFee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat(budget.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{parseFloat(budget.profit || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>{budget.margin ? `${budget.margin.toFixed(2)}%` : '0%'}</td>
+                    <td>{(budget.produtos || []).length}</td>
                     <td>
-                      {item.valor_negociado ? (
-                        <span>
-                          {item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          <br/>
-                          <small className="text-gray-500">
-                            Original: {item.originalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </small>
-                        </span>
-                      ) : (
-                        item.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                      )}
-                    </td>
-                    <td>{(item.totalValue - item.installationFee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td>{item.installationFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td>{item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td>{item.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td>{item.margin}%</td>
-                    <td>{item.produtos.length}</td>
-                    <td>
-                      <button onClick={() => toggleProductDetails(item.id)}>
-                        {item.showDetails ? 'Ocultar' : 'Detalhes'}
+                      <button onClick={() => toggleProductDetails(budget.id)}>
+                        {expandedBudgets.has(budget.id) ? 'Ocultar' : 'Detalhes'}
                       </button>
                     </td>
                   </tr>
-                  {item.showDetails && (
+                  {expandedBudgets.has(budget.id) && (
                     <tr className="details-row">
-                      <td colSpan="9">
+                      <td colSpan="10">
                         <div className="product-details">
                           <h4>Detalhes dos Produtos</h4>
-                          {item.produtos.map((prod, index) => (
+                          {(budget.produtos || []).map((prod, index) => (
                             <div key={index} className="product-detail-item">
-                              <p>Produto {index + 1}:</p>
-                              <p>Dimensões: {prod.largura}m x {prod.altura}m</p>
-                              {prod.cost.dimensions.usedMinimum && (
-                                <p>Dimensões calculadas: {prod.cost.dimensions.width.toFixed(2)}m x {prod.cost.dimensions.height.toFixed(2)}m</p>
-                              )}
-                              <p>Custo do Produto: {prod.cost.productCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                              {prod.bando && (
-                                <>
-                                  <p>Bandô:</p>
-                                  <ul>
-                                    <li>Custo: {prod.cost.bandoCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                    <li>Venda: {prod.cost.bandoValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                    <li>Lucro: {(prod.cost.bandoValue - prod.cost.bandoCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                  </ul>
-                                </>
-                              )}
-                              {prod.cost.acessorios && prod.cost.acessorios.length > 0 && (
-                                <>
-                                  <p>Acessórios:</p>
-                                  <ul>
-                                    <li>Custo Total: {prod.cost.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                    <li>Venda Total: {prod.cost.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                    <li>Lucro: {(prod.cost.accessoriesValue - prod.cost.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                    <li>Detalhes:</li>
-                                    {prod.cost.acessorios.map((acessorio, idx) => (
-                                      <li key={idx} style={{marginLeft: '20px'}}>
-                                        {acessorio.nome} - {acessorio.quantity}x 
-                                        - Custo un.: {parseFloat(acessorio.preco_custo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        - Venda un.: {parseFloat(acessorio.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </>
-                              )}
-                              <p>Instalação: {prod.instalacao ? parseFloat(prod.valor_instalacao).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não'}</p>
-                              <p>Subtotal: {parseFloat(prod.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                              <h5>Produto {index + 1}: {prod.produto?.nome || 'Nome não encontrado'}</h5>
+                              
+                              <div className="product-info-section">
+                                <p>Dimensões: {prod.largura || prod.width}m x {prod.altura || prod.height}m</p>
+                                <p>Custo do Produto: {parseFloat(prod.cost?.productCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                <p>Valor do Produto: {parseFloat(prod.cost?.productValue || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                
+                                {prod.bando && (
+                                  <div className="bando-section">
+                                    <h6>Bandô:</h6>
+                                    <p>Custo: {parseFloat(prod.cost?.bandoCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p>Venda: {parseFloat(prod.cost?.bandoValue || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p>Lucro: {parseFloat((prod.cost?.bandoValue || 0) - (prod.cost?.bandoCost || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                  </div>
+                                )}
+
+                                {prod.trilho_tipo && (
+                                  <div className="trilho-section">
+                                    <h6>Trilho - {prod.trilho_tipo}:</h6>
+                                    <p>Custo: {parseFloat(prod.cost?.trilhoCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p>Venda: {parseFloat(prod.cost?.trilhoValue || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p>Lucro: {parseFloat((prod.cost?.trilhoValue || 0) - (prod.cost?.trilhoCost || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                  </div>
+                                )}
+
+                                {prod.instalacao && (
+                                  <div className="installation-section">
+                                    <h6>Instalação:</h6>
+                                    <p>Valor: {parseFloat(prod.valor_instalacao || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                  </div>
+                                )}
+
+                                <p className="total-section">
+                                  <strong>Total do Produto: {parseFloat(
+                                    (prod.cost?.productValue || 0) + 
+                                    (prod.cost?.bandoValue || 0) + 
+                                    (prod.cost?.trilhoValue || 0) +
+                                    (prod.instalacao ? (parseFloat(prod.valor_instalacao) || 0) : 0)
+                                  ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                                </p>
+                              </div>
                             </div>
                           ))}
-                          {item.acessorios && item.acessorios.length > 0 && (
-                            <div className="report-section">
-                              <h4>Acessórios</h4>
-                              <ul>
-                                <li>Custo Total: {item.accessoriesCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Venda Total: {item.accessoriesValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Lucro: {(item.accessoriesValue - item.accessoriesCost).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</li>
-                                <li>Detalhes:</li>
-                                {item.acessorios.map((acessorio, idx) => (
-                                  <li key={idx} style={{marginLeft: '20px'}}>
-                                    {acessorio.nome} - {acessorio.quantity}x 
-                                    - Custo un.: {parseFloat(acessorio.preco_custo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    - Venda un.: {parseFloat(acessorio.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
                         </div>
                       </td>
                     </tr>
