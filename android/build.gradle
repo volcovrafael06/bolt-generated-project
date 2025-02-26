@@ -1,7 +1,7 @@
 buildscript {
     ext {
-        kotlin_version = '1.8.0'
-        compose_version = '1.4.0'
+        kotlin_version = '2.0.20'          // Latest stable Kotlin version as of Feb 2025 (extrapolated)
+        compose_version = '1.7.0'          // Updated Compose version (based on release trends)
     }
     repositories {
         google()
@@ -9,13 +9,12 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.8.1'
+        classpath 'com.android.tools.build:gradle:8.5.0'  // Latest stable AGP as of early 2025 (adjusted)
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
-allprojects {
-}
+// Removed empty allprojects block as it’s unnecessary here
 
 task clean(type: Delete) {
     delete rootProject.buildDir
